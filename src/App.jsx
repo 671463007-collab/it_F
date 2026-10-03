@@ -17,6 +17,7 @@ import ManagePosts from "./pages/admin/ManagePosts";
 import ManageUsers from "./pages/admin/ManageUsers";
 import ManageCategories from "./pages/admin/ManageCategories";
 import ManageReports from "./pages/admin/ManageReports";
+import ProtectedAdminRoute from "./pages/ProtectedAdminRoute";
 
 function App() {
   return (
@@ -34,12 +35,14 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/messages" element={<ChatPage />} />
         
-        <Route element={<AdminLayout />}>
+        <Route element={<ProtectedAdminRoute />}>
+          <Route element={<AdminLayout />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/posts" element={<ManagePosts />} />
           <Route path="/admin/users" element={<ManageUsers />} />
           <Route path="/admin/categories" element={<ManageCategories />} />
           <Route path="/admin/reports" element={<ManageReports />} />
+          </Route>
         </Route>
       </Routes>
     </Router>
