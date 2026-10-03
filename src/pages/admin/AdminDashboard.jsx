@@ -7,7 +7,7 @@ export default function AdminDashboard() {
         banned_users: 0,
         total_posts: 0,
         pending_posts: 0,
-        total_reports: 0,
+        pending_reports: 0,
     });
     const [loading, setLoading] = useState(true);
 
@@ -61,7 +61,7 @@ export default function AdminDashboard() {
                 <div className="bg-white p-6 rounded-xl shadow border border-gray-100 flex items-center justify-between">
                     <div>
                         <p className="text-sm text-gray-500 font-medium">รายงานปัญหาค้างอยู่</p>
-                        <h3 className="text-3xl font-bold text-red-600 mt-1">{stats.total_reports}</h3>
+                        <h3 className="text-3xl font-bold text-red-600 mt-1">{stats.pending_reports}</h3>
                     </div>
                     <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xl">🚨</div>
                 </div>
