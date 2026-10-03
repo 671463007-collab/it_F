@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../api/axios';
 
 export default function ManageUsers() {
     const [users, setUsers] = useState([]);
@@ -11,10 +11,7 @@ export default function ManageUsers() {
 
     const fetchUsers = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://127.0.0.1:8000/api/admin/users', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await api.get('/admin/users');
             // รองรับทั้งแบบ pagination (response.data.data) และแบบ array ตรงๆ
             setUsers(response.data.data || response.data);
         } catch (error) {
@@ -26,11 +23,8 @@ export default function ManageUsers() {
 
     // ฟังก์ชันสลับสถานะบัญชี (แบน / ปลดแบน)
     const handleToggleStatus = async (userId) => {
-        const token = localStorage.getItem('token');
         try {
-            const response = await axios.patch(`http://127.0.0.1:8000/api/admin/users/${userId}/toggle-status`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await api.patch(`/admin/users/${userId}/toggle-status`);
             
             // อัปเดตสเตตหน้าจอทันทีหลังจาก API ตอบกลับ
             const updatedUser = response.data.user;
