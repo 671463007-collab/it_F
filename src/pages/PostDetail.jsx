@@ -13,12 +13,14 @@ function PostDetail() {
   const [commentText, setCommentText] = useState("");
   const [rating, setRating] = useState(5);
   const [submitting, setSubmitting] = useState(false);
+  const [liking, setLiking] = useState(false);
 
   // State สำหรับจัดการการกดปุ่มตอบกลับ (Reply) แยกตามรายคอมเมนต์
   const [replyingTo, setReplyingTo] = useState(null); // เก็บ ID ของคอมเมนต์ที่กำลังจะตอบกลับ
   const [replyText, setReplyText] = useState("");
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  const storedUser = localStorage.getItem("user");
+  const user = storedUser ? JSON.parse(storedUser) : null;
   const token = localStorage.getItem("token");
 
   const fetchPostDetail = () => {
@@ -66,9 +68,34 @@ function PostDetail() {
       .finally(() => setSubmitting(false));
   };
 
+  const handleLike = () => {
+    if (!token) {
+      alert("กรุณาเข้าสู่ระบบก่อนกดถูกใจ");
+      navigate("/login");
+      return;
+    }
+
+    setLiking(true);
+    api
+      .post(`/exchange-posts/${id}/like`)
+      .then((res) => {
+        setPost((current) => ({
+          ...current,
+          is_liked: res.data.liked,
+          likes_count: res.data.likes_count,
+        }));
+      })
+      .catch((err) => {
+        alert(err.response?.data?.message || "ไม่สามารถกดถูกใจได้");
+      })
+      .finally(() => setLiking(false));
+  };
+
   // ส่งข้อความตอบกลับ (Reply) ในเธรด
   const handleReplySubmit = (e, parentId) => {
     e.preventDefault();
+    if (!replyText.trim()) return;
+
     if (!token) {
       alert("กรุณาเข้าสู่ระบบก่อนตอบกลับ");
       navigate("/login");
@@ -79,7 +106,7 @@ function PostDetail() {
       .post(`/exchange-posts/${id}/comments`, {
         content: replyText,
         parent_id: parentId, // ส่ง ID คอมเมนต์แม่ไป (ต้องให้หลังบ้านรองรับฟิลด์นี้)
-        rating: 5, // ค่าเรตติ้งสำรองกรณีตอบกลับ
+        rating: null,
       })
       .then(() => {
         setReplyText("");
@@ -92,7 +119,7 @@ function PostDetail() {
   };
 
   const handleDeleteComment = (commentId) => {
-    if (!window.confirm("คุณต้องการลบทรุปแบบความเห็นนี้ใช่หรือไม่?")) return;
+    if (!window.confirm("คุณต้องการลบความคิดเห็นนี้ใช่หรือไม่?")) return;
 
     api
       .delete(`/comments/${commentId}`)
@@ -159,8 +186,14 @@ function PostDetail() {
                   <span className="badge bg-success-subtle text-success px-3 py-1 rounded-pill">
                     สภาพ {post.condition_percent}%
                   </span>
-                  <button className="btn btn-sm btn-outline-danger rounded-pill px-3">
-                    <i className="bi bi-heart-fill me-1"></i> ถูกใจ ({post.likes_count || 12})
+                  <button
+                    type="button"
+                    className={`btn btn-sm rounded-pill px-3 ${post.is_liked ? "btn-danger" : "btn-outline-danger"}`}
+                    onClick={handleLike}
+                    disabled={liking}
+                  >
+                    <i className={`bi ${post.is_liked ? "bi-heart-fill" : "bi-heart"} me-1`}></i>
+                    {liking ? "กำลังบันทึก..." : `ถูกใจ (${post.likes_count || 0})`}
                   </button>
                 </div>
                 <h2 className="fw-bold text-dark mb-3">{post.title}</h2>
