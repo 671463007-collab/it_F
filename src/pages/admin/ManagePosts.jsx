@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../api/axios';
 
 export default function ManagePosts() {
     const [posts, setPosts] = useState([]);
@@ -11,10 +11,7 @@ export default function ManagePosts() {
 
     const fetchPosts = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://127.0.0.1:8000/api/admin/exchange-posts', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await api.get('/admin/exchange-posts');
             setPosts(response.data.data || response.data);
         } catch (error) {
             console.error('ไม่สามารถโหลดข้อมูลโพสต์ได้:', error);
@@ -25,13 +22,8 @@ export default function ManagePosts() {
 
     // เปลี่ยนสถานะโพสต์ (เช่น pending, open, closed, banned)
     const handleUpdateStatus = async (postId, newStatus) => {
-        const token = localStorage.getItem('token');
         try {
-            await axios.patch(`http://127.0.0.1:8000/api/admin/exchange-posts/${postId}/status`, {
-                status: newStatus
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await api.patch(`/admin/exchange-posts/${postId}/status`, { status: newStatus });
 
             // อัปเดตสเตตหน้าจอทันที
             setPosts(posts.map(post => post.id === postId ? { ...post, status: newStatus } : post));
@@ -88,7 +80,7 @@ export default function ManagePosts() {
                                         <option value="pending">Pending</option>
                                         <option value="open">Open</option>
                                         <option value="closed">Closed</option>
-                                        <option value="banned">Banned</option>
+                                        <option value="hidden">Hidden</option>
                                     </select>
                                 </td>
                             </tr>
