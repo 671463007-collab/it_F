@@ -1,193 +1,163 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../api/axios";
 
-export default function CreateExchangePost() {
-    const navigate = useNavigate();
-    const [categories, setCategories] = useState([]);
-    
-    // ฟอร์มสเตตสำหรับเก็บข้อมูลสินค้า
-    const [formData, setFormData] = useState({
-        category_id: '',
-        title: '',
-        description: '',
-        condition_percent: 100,
-        looking_for: '',
+function CreateExchangePost() {
+  const navigate = useNavigate();
+  const [categories, setCategories] = useState([]);
+  const [form, setForm] = useState({
+    category_id: "",
+    title: "",
+    description: "",
+    condition_percent: 100,
+    looking_for: "",
+  });
+  const [images, setImages] = useState([]);
+  const [previews, setPreviews] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    api.get("/categories")
+      .then((res) => {
+        const data = res.data?.data || res.data;
+        setCategories(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setErrorMessage("ไม่สามารถโหลดหมวดหมู่ได้"));
+  }, []);
+
+  useEffect(() => {
+    const urls = images.map((file) => URL.createObjectURL(file));
+    setPreviews(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [images]);
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter((file) => {
+      const validType = ["image/jpeg", "image/png", "image/jpg", "image/webp"].includes(file.type);
+      return validType && file.size <= 2 * 1024 * 1024;
     });
-    
-    const [images, setImages] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [errorMessage, setErrorMessage] = useState('');
 
-    // โหลดหมวดหมู่สินค้าทั้งหมดเมื่อเปิดหน้าเว็บ
-    useEffect(() => {
-        axios.get('http://127.0.0.1:8000/api/categories')
-            .then(res => setCategories(res.data))
-            .catch(err => console.error('ไม่สามารถโหลดหมวดหมู่ได้:', err));
-    }, []);
+    if (validFiles.length !== files.length) {
+      setErrorMessage("รูปภาพต้องเป็น JPG, PNG หรือ WEBP และมีขนาดไม่เกิน 2MB ต่อไฟล์");
+    } else {
+      setErrorMessage("");
+    }
 
-    // จัดการการเปลี่ยนแปลงของฟอร์มข้อความ
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+    setImages(validFiles);
+  };
 
-    // จัดการการเลือกรูปภาพหลายรูป
-    const handleImageChange = (e) => {
-        setImages(e.target.files);
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMessage("");
 
-    // ส่งข้อมูลฟอร์มไปยัง Backend
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setErrorMessage('');
+    if (!form.category_id) {
+      setErrorMessage("กรุณาเลือกหมวดหมู่สินค้า");
+      return;
+    }
 
-        const data = new FormData();
-        data.append('category_id', formData.category_id);
-        data.append('title', formData.title);
-        data.append('description', formData.description);
-        data.append('condition_percent', formData.condition_percent);
-        data.append('looking_for', formData.looking_for);
+    setLoading(true);
+    const data = new FormData();
 
-        // แนบไฟล์รูปภาพทั้งหมดเข้า FormData
-        for (let i = 0; i < images.length; i++) {
-            data.append('images[]', images[i]);
-        }
+    Object.entries(form).forEach(([key, value]) => data.append(key, value));
+    images.forEach((file) => data.append("images[]", file));
 
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.post('http://127.0.0.1:8000/api/exchange-posts', data, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
+    try {
+      const response = await api.post("/exchange-posts", data);
+      alert(response.data.message || "ลงประกาศเรียบร้อยแล้ว");
+      navigate("/my-posts");
+    } catch (error) {
+      const errors = error.response?.data?.errors;
+      const firstError = errors ? Object.values(errors).flat()[0] : null;
+      setErrorMessage(firstError || error.response?.data?.message || "เกิดข้อผิดพลาดในการสร้างโพสต์");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            alert(response.data.message);
-            navigate('/'); // พา กลับไปหน้าแรกหรือหน้าจัดการโพสต์
-        } catch (error) {
-            console.error('เกิดข้อผิดพลาด:', error);
-            if (error.response && error.response.data.errors) {
-                // ดึงข้อความแจ้งเตือน validation จาก Laravel มาแสดง
-                const errors = Object.values(error.response.data.errors).flat();
-                setErrorMessage(errors[0]);
-            } else {
-                setErrorMessage('เกิดข้อผิดพลาดในการสร้างโพสต์ กรุณาลองใหม่อีกครั้ง');
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
+  return (
+    <div className="container py-4 mb-5" style={{ maxWidth: "760px" }}>
+      <div className="card border-0 shadow-sm">
+        <div className="card-body p-4 p-md-5">
+          <div className="mb-4">
+            <h2 className="fw-bold mb-1">ลงประกาศขอแลกเปลี่ยนอุปกรณ์ IT</h2>
+            <p className="text-muted mb-0">กรอกรายละเอียดอุปกรณ์และสิ่งที่ต้องการแลก</p>
+          </div>
 
-    return (
-        <div className="max-w-2xl mx-auto p-6 bg-white shadow rounded-lg mt-8 mb-12">
-            <h1 className="text-2xl font-bold text-gray-800 mb-6">📝 ลงประกาศขอแลกเปลี่ยนสินค้า IT</h1>
+          {errorMessage && <div className="alert alert-danger">{errorMessage}</div>}
 
-            {errorMessage && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">
-                    {errorMessage}
-                </div>
+          <form onSubmit={handleSubmit}>
+            <div className="mb-3">
+              <label className="form-label fw-semibold">หมวดหมู่สินค้า</label>
+              <select className="form-select" name="category_id" value={form.category_id} onChange={handleChange} required>
+                <option value="">-- เลือกหมวดหมู่ --</option>
+                {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+              </select>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label fw-semibold">หัวข้อประกาศ</label>
+              <input className="form-control" name="title" value={form.title} onChange={handleChange}
+                placeholder="เช่น ต้องการแลกการ์ดจอ RTX 3060" required />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label fw-semibold">รายละเอียดสินค้า</label>
+              <textarea className="form-control" name="description" rows="5" value={form.description}
+                onChange={handleChange} placeholder="ระบุสเปก การใช้งาน ตำหนิ ประกัน และอุปกรณ์ที่มีให้" required />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label fw-semibold d-flex justify-content-between">
+                <span>สภาพสินค้า</span><span>{form.condition_percent}%</span>
+              </label>
+              <input className="form-range" type="range" name="condition_percent" min="0" max="100"
+                value={form.condition_percent} onChange={handleChange} />
+              <div className="d-flex justify-content-between text-muted small">
+                <span>0%</span><span>50%</span><span>100%</span>
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label fw-semibold">สิ่งที่ต้องการแลก</label>
+              <input className="form-control" name="looking_for" value={form.looking_for} onChange={handleChange}
+                placeholder="เช่น CPU Ryzen 5 หรือรุ่นที่ใกล้เคียง" />
+            </div>
+
+            <div className="mb-4">
+              <label className="form-label fw-semibold">รูปภาพสินค้า</label>
+              <input className="form-control" type="file" multiple accept="image/jpeg,image/png,image/jpg,image/webp"
+                onChange={handleImageChange} />
+              <div className="form-text">เลือกได้หลายรูป ขนาดไม่เกิน 2MB ต่อไฟล์</div>
+            </div>
+
+            {previews.length > 0 && (
+              <div className="row g-2 mb-4">
+                {previews.map((src, index) => (
+                  <div className="col-6 col-md-3" key={src}>
+                    <img src={src} alt={`Preview ${index + 1}`} className="img-fluid rounded border"
+                      style={{ width: "100%", height: "130px", objectFit: "cover" }} />
+                  </div>
+                ))}
+              </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-                {/* เลือกหมวดหมู่ */}
-                <div>
-                    <label className="block text-gray-700 font-medium mb-1">หมวดหมู่สินค้า</label>
-                    <select 
-                        name="category_id" 
-                        value={formData.category_id} 
-                        onChange={handleChange} 
-                        required
-                        className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option value="">-- เลือกหมวดหมู่ --</option>
-                        {categories.map(cat => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* หัวข้อโพสต์ */}
-                <div>
-                    <label className="block text-gray-700 font-medium mb-1">หัวข้อประกาศ</label>
-                    <input 
-                        type="text" 
-                        name="title" 
-                        value={formData.title} 
-                        onChange={handleChange} 
-                        placeholder="เช่น ต้องการแลกการ์ดจอ RTX 3060 กับรุ่นอื่น" 
-                        required
-                        className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                </div>
-
-                {/* รายละเอียดสินค้า */}
-                <div>
-                    <label className="block text-gray-700 font-medium mb-1">รายละเอียดสินค้าของคุณ</label>
-                    <textarea 
-                        name="description" 
-                        value={formData.description} 
-                        onChange={handleChange} 
-                        rows="4" 
-                        placeholder="ระบุสเปก ประกัน อุปกรณ์ที่มีให้ครบไหม ฯลฯ" 
-                        required
-                        className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                </div>
-
-                {/* สภาพสินค้า (%) */}
-                <div>
-                    <label className="block text-gray-700 font-medium mb-1">สภาพสินค้า ({formData.condition_percent}%)</label>
-                    <input 
-                        type="range" 
-                        name="condition_percent" 
-                        min="0" 
-                        max="100" 
-                        value={formData.condition_percent} 
-                        onChange={handleChange} 
-                        className="w-full accent-blue-600"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500">
-                    <span>0% (ใช้งานหนัก/มีตำหนิมาก)</span>
-                        <span>50% (ปานกลาง)</span>
-                        <span>100% (มือหนึ่ง / สภาพใหม่กริ๊ป)</span>
-                    </div>
-                </div>
-
-                {/* สิ่งที่อยากแลก */}
-                <div>
-                    <label className="block text-gray-700 font-medium mb-1">สิ่งที่คุณอยากได้มาแลกเปลี่ยน (Looking For)</label>
-                    <input 
-                        type="text" 
-                        name="looking_for" 
-                        value={formData.looking_for} 
-                        onChange={handleChange} 
-                        placeholder="เช่น อยากแลกเป็น CPU Ryzen 5 หรือรุ่นที่เทียบเท่า" 
-                        className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                </div>
-
-                {/* อัปโหลดรูปภาพหลายรูป */}
-                <div>
-                    <label className="block text-gray-700 font-medium mb-1">รูปภาพสินค้า (อัปได้หลายรูป)</label>
-                    <input 
-                        type="file" 
-                        multiple 
-                        accept="image/jpeg,image/png,image/jpg,image/webp"
-                        onChange={handleImageChange} 
-                        className="w-full border rounded-lg p-2 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                </div>
-
-                {/* ปุ่มกดส่งฟอร์ม */}
-                <button 
-                    type="submit" 
-                    disabled={loading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition duration-200 shadow-md disabled:bg-gray-400"
-                >
-                    {loading ? 'กำลังบันทึกข้อมูล...' : '🚀 ลงประกาศสินค้า'}
-                </button>
-            </form>
+            <div className="d-flex justify-content-end gap-2">
+              <button type="button" className="btn btn-light border" onClick={() => navigate(-1)}>ยกเลิก</button>
+              <button type="submit" className="btn btn-primary px-4" disabled={loading}>
+                {loading ? "กำลังบันทึก..." : "ลงประกาศ"}
+              </button>
+            </div>
+          </form>
         </div>
-    );
+      </div>
+    </div>
+  );
 }
+
+export default CreateExchangePost;
