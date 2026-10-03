@@ -5,6 +5,10 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import PostDetail from "./pages/PostDetail";
 import CreatePost from "./pages/CreatePost";
+import CreateExchangePost from "./pages/CreateExchangePost";
+import MyPostsPage from "./pages/MyPostsPage";
+import ReviewPage from "./pages/ReviewPage";
+import UserProfilePage from "./pages/UserProfilePage";
 import ChatPage from "./pages/ChatPage";
 
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -22,6 +26,10 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/posts/:id" element={<PostDetail />} />
         <Route path="/create-post" element={<CreatePost />} />
+        <Route path="/create-exchange-post" element={<CreateExchangePost />} />
+        <Route path="/my-posts" element={<MyPostsPage />} />
+        <Route path="/reviews" element={<ReviewPage />} />
+        <Route path="/users/:id" element={<UserProfilePage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/messages" element={<ChatPage />} />
