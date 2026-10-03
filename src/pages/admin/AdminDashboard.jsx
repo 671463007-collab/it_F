@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../api/axios';
 
 export default function AdminDashboard() {
     const [stats, setStats] = useState({
@@ -17,11 +17,8 @@ export default function AdminDashboard() {
 
     const fetchDashboardStats = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://127.0.0.1:8000/api/admin/dashboard', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setStats(response.data.stats);
+            const response = await api.get('/admin/dashboard');
+            setStats(response.data);
         } catch (error) {
             console.error('ไม่สามารถโหลดข้อมูลแดชบอร์ดได้:', error);
         } finally {
