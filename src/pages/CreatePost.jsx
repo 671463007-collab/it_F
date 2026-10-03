@@ -66,11 +66,7 @@ function CreatePost() {
     }
 
     api
-      .post("/exchange-posts", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      })
+      .post("/exchange-posts", formData, )
       .then((res) => {
         alert(res.data.message || "สร้างประกาศเรียบร้อยแล้ว");
         navigate("/");
