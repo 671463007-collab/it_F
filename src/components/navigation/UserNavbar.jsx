@@ -10,7 +10,7 @@ function UserNavbar() {
       <div className="container">
         <Link className="navbar-brand fw-bold d-flex align-items-center gap-2" to="/">
           <span className="brand-mark" aria-hidden="true">IT</span>
-          <span>ไอทีมือสอง</span>
+          <span>มือสอง</span>
         </Link>
 
         <button
@@ -36,17 +36,17 @@ function UserNavbar() {
               <>
                 <li className="nav-item me-3">
                   <Link className="btn btn-brand-light btn-sm" to="/create-post">
-                    + ลงประกาศ
+                    โพสต์
                   </Link>
                 </li>
                 <li className="nav-item me-3">
-                  <Link className="nav-link" to="/my-posts">ประกาศของฉัน</Link>
+                  <Link className="nav-link" to="/my-posts">โพสต์ของฉัน</Link>
                 </li>
                 <li className="nav-item me-3">
                   <Link className="nav-link" to="/my-reports">รายงานของฉัน</Link>
                 </li>
                 <li className="nav-item me-3">
-                  <Link className="nav-link" to="/messages">แชต</Link>
+                  <Link className="nav-link" to="/messages">แชท</Link>
                 </li>
                 <li className="nav-item me-3">
                   <Link className="nav-link" to="/profile">โปรไฟล์</Link>

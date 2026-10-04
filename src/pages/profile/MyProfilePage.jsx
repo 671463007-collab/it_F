@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../../api/axios';
+import { addTimestampToImageFilename, validateImageFile } from '../../utils/imageUpload';
+
+const allowedAvatarTypes = ['image/jpeg', 'image/png'];
 
 const emptyProfile = {
     name: '',
@@ -13,6 +16,7 @@ export default function MyProfilePage() {
     const [profile, setProfile] = useState(emptyProfile);
     const [avatar, setAvatar] = useState(null);
     const [avatarPreview, setAvatarPreview] = useState('');
+    const [avatarSelectionError, setAvatarSelectionError] = useState('');
     const avatarPreviewUrlRef = useRef(null);
     const [password, setPassword] = useState('');
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
@@ -41,18 +45,41 @@ export default function MyProfilePage() {
             avatarPreviewUrlRef.current = null;
         }
 
-        setAvatar(selectedAvatar);
-        if (selectedAvatar) {
-            const previewUrl = URL.createObjectURL(selectedAvatar);
-            avatarPreviewUrlRef.current = previewUrl;
-            setAvatarPreview(previewUrl);
-        } else {
+        if (!selectedAvatar) {
+            setAvatar(null);
             setAvatarPreview('');
+            setAvatarSelectionError('');
+            return;
         }
+
+        const validationError = validateImageFile(selectedAvatar, allowedAvatarTypes);
+        if (validationError) {
+            setAvatar(null);
+            setAvatarPreview('');
+            setAvatarSelectionError(validationError);
+            event.target.value = '';
+            return;
+        }
+
+        const renamedAvatar = addTimestampToImageFilename(selectedAvatar, 'avatar');
+        setAvatar(renamedAvatar);
+        setAvatarSelectionError('');
+        setErrors((current) => {
+            const nextErrors = { ...current };
+            delete nextErrors.avatar;
+            return nextErrors;
+        });
+        const previewUrl = URL.createObjectURL(renamedAvatar);
+        avatarPreviewUrlRef.current = previewUrl;
+        setAvatarPreview(previewUrl);
     };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+        if (avatarSelectionError) {
+            setMessage(avatarSelectionError);
+            return;
+        }
         setSaving(true);
         setMessage('');
         setErrors({});
@@ -91,7 +118,7 @@ export default function MyProfilePage() {
 
     if (loading) return <div className="container py-5 text-center">กำลังโหลดโปรไฟล์...</div>;
 
-    const fieldError = (field) => errors[field]?.[0];
+    const fieldError = (field) => (field === 'avatar' && avatarSelectionError) || errors[field]?.[0];
 
     return (
         <main className="container page-surface py-4 py-lg-5" style={{ maxWidth: '860px' }}>
@@ -101,9 +128,9 @@ export default function MyProfilePage() {
             </div>
             <form className="card profile-form-card" onSubmit={handleSubmit}>
                 <div className="card-body p-4">
-                    {message && <div className={`alert ${Object.keys(errors).length ? 'alert-danger' : 'alert-info'}`} role="status">{message}</div>}
+                    {message && <div className={`alert ${Object.keys(errors).length || avatarSelectionError ? 'alert-danger' : 'alert-info'}`} role="status">{message}</div>}
                     <div className="d-flex align-items-center gap-3 mb-4">
-                        <img src={profile.avatar_url || 'https://via.placeholder.com/96'} alt="รูปโปรไฟล์" width="88" height="88" className="rounded-circle object-fit-cover border" />
+                        <img src={avatarPreview || profile.avatar_url || 'https://via.placeholder.com/96'} alt="รูปโปรไฟล์" width="88" height="88" className="rounded-circle object-fit-cover border" />
                         <div>
                             <div className="fw-semibold">{profile.name}</div>
                             <div className="text-secondary small">{profile.role === 'admin' ? 'ผู้ดูแล' : 'สมาชิก'} · {profile.status === 'banned' ? 'ถูกระงับ' : 'ใช้งาน'}</div>
@@ -124,6 +151,7 @@ export default function MyProfilePage() {
                         <div className="col-12">
                             <label className="form-label" htmlFor="profile-avatar">รูปโปรไฟล์ (JPG/PNG ไม่เกิน 2MB)</label>
                             <input id="profile-avatar" type="file" accept="image/jpeg,image/png" className={`form-control ${fieldError('avatar') ? 'is-invalid' : ''}`} onChange={handleAvatarChange} />
+                            {avatar && <div className="form-text">ชื่อไฟล์ที่จะอัปโหลด: {avatar.name}</div>}
                             {avatarPreview && (
                                 <div className="mt-3">
                                     <div className="form-label">ตัวอย่างรูปที่เลือก</div>

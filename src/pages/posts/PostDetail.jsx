@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
 
@@ -21,6 +21,7 @@ export default function PostDetail() {
     const [reporting, setReporting] = useState(false);
     const [reportReason, setReportReason] = useState('');
     const [reportError, setReportError] = useState('');
+    const commentSubmissionVersionRef = useRef(0);
 
     const token = localStorage.getItem('token');
     let user = null;
@@ -59,9 +60,12 @@ export default function PostDetail() {
         let timeoutId;
         const refreshPost = async () => {
             if (document.visibilityState === 'visible') {
+                const submissionVersion = commentSubmissionVersionRef.current;
                 try {
                     const response = await api.get(`/exchange-posts/${id}`);
-                    if (!cancelled) setPost(response.data);
+                    if (!cancelled && submissionVersion === commentSubmissionVersionRef.current) {
+                        setPost(response.data);
+                    }
                 } catch (error) {
                     if (!cancelled) console.error('ไม่สามารถอัปเดตโพสต์และความคิดเห็นได้:', error);
                 }
@@ -107,15 +111,44 @@ export default function PostDetail() {
             if (post.post_type === 'exchange') payload.rating = rating ? Number(rating) : null;
             if (parentId) payload.parent_id = parentId;
             const response = await api.post(`/exchange-posts/${id}/comments`, payload);
-            const savedComment = { ...response.data.comment, replies: [] };
-            setPost((current) => ({
-                ...current,
-                comments: parentId
-                    ? current.comments.map((comment) => comment.id === parentId
-                        ? { ...comment, replies: [...(comment.replies || []), savedComment] }
-                        : comment)
-                    : [savedComment, ...(current.comments || [])],
-            }));
+            commentSubmissionVersionRef.current += 1;
+            const responseComment = response.data?.comment
+                || response.data?.data?.comment
+                || response.data?.data
+                || response.data;
+            const savedComment = responseComment
+                && typeof responseComment === 'object'
+                && responseComment.id != null
+                && typeof responseComment.content === 'string'
+                ? { ...responseComment, replies: responseComment.replies || [] }
+                : null;
+
+            if (savedComment) {
+                setPost((current) => {
+                    if (parentId) {
+                        return {
+                            ...current,
+                            comments: (current.comments || []).map((comment) => comment.id === parentId
+                                ? { ...comment, replies: [...(comment.replies || []), savedComment] }
+                                : comment),
+                        };
+                    }
+                    return {
+                        ...current,
+                        comments: [savedComment, ...(current.comments || [])],
+                    };
+                });
+            }
+
+            try {
+                const refreshedPost = await api.get(`/exchange-posts/${id}`);
+                setPost(refreshedPost.data);
+            } catch (error) {
+                console.error('ส่งความคิดเห็นแล้ว แต่โหลดข้อมูลความคิดเห็นล่าสุดไม่สำเร็จ:', error);
+                if (!savedComment) {
+                    alert('ส่งความคิดเห็นแล้ว แต่แสดงผลไม่สำเร็จ กรุณารีเฟรชหน้า');
+                }
+            }
             if (parentId) {
                 setReplyText('');
                 setReplyingToId(null);

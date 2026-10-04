@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import { addTimestampToImageFilename, validateImageFile } from '../../utils/imageUpload';
+
+const allowedPostImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
 const statusLabels = {
     pending: 'รอตรวจสอบ',
@@ -15,6 +18,7 @@ export default function MyPostsPage() {
     const [editingPostId, setEditingPostId] = useState(null);
     const [draft, setDraft] = useState(null);
     const [newImages, setNewImages] = useState([]);
+    const [imageError, setImageError] = useState('');
     const [postTypeFilter, setPostTypeFilter] = useState('all');
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -88,10 +92,25 @@ export default function MyPostsPage() {
         }
         setDraft(postDraft);
         setNewImages([]);
+        setImageError('');
+    };
+
+    const handleNewImagesChange = (event) => {
+        const selectedFiles = Array.from(event.target.files || []);
+        const validFiles = selectedFiles
+            .filter((file) => !validateImageFile(file, allowedPostImageTypes))
+            .map((file, index) => addTimestampToImageFilename(file, 'post-image', index));
+        setNewImages(validFiles);
+        setImageError(
+            validFiles.length === selectedFiles.length
+                ? ''
+                : 'รูปภาพต้องเป็น JPG, PNG หรือ WEBP และมีขนาดไม่เกิน 2MB ต่อรูป'
+        );
     };
 
     const savePost = async (event) => {
         event.preventDefault();
+        if (imageError) return;
         setSaving(true);
         const formData = new FormData();
         Object.entries(draft).forEach(([key, value]) => formData.append(key, value));
@@ -183,11 +202,13 @@ export default function MyPostsPage() {
                                         </div>}
                                         <div className="col-12">
                                             <label className="form-label">เพิ่มรูปภาพ (ไม่เกิน 2MB ต่อรูป)</label>
-                                            <input className="form-control" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => setNewImages(event.target.files || [])} />
+                                            <input className={`form-control ${imageError ? 'is-invalid' : ''}`} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleNewImagesChange} />
+                                            {imageError && <div className="invalid-feedback">{imageError}</div>}
+                                            {newImages.length > 0 && <div className="form-text">ชื่อไฟล์ที่เตรียมอัปโหลด: {newImages.map((image) => image.name).join(', ')}</div>}
                                         </div>
                                         <div className="col-12 d-flex justify-content-end gap-2">
                                             <button className="btn btn-primary" type="submit" disabled={saving}>{saving ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}</button>
-                                            <button className="btn btn-outline-secondary" type="button" onClick={() => setEditingPostId(null)}>ยกเลิก</button>
+                                            <button className="btn btn-outline-secondary" type="button" onClick={() => { setEditingPostId(null); setImageError(''); }}>ยกเลิก</button>
                                         </div>
                                     </form>
                                 )}

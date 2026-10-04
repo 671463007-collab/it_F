@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
+import { addTimestampToImageFilename, validateImageFile } from "../../utils/imageUpload";
+
+const allowedPostImageTypes = ["image/jpeg", "image/png", "image/webp"];
 
 function CreatePost() {
   const navigate = useNavigate();
@@ -19,8 +22,8 @@ function CreatePost() {
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [imageSelectionError, setImageSelectionError] = useState("");
 
-  // ดึงรายการหมวดหมู่
   useEffect(() => {
     api
       .get("/categories")
@@ -34,20 +37,28 @@ function CreatePost() {
   useEffect(() => () => previewUrls.forEach((url) => URL.revokeObjectURL(url)), [previewUrls]);
 
   const handleImageChange = (e) => {
-    const files = Array.from(e.target.files || []).filter((file) => {
-      const validType = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
-      return validType && file.size <= 2 * 1024 * 1024;
-    });
+    const selectedFiles = Array.from(e.target.files || []);
+    const files = selectedFiles
+      .filter((file) => !validateImageFile(file, allowedPostImageTypes))
+      .map((file, index) => addTimestampToImageFilename(file, "post-image", index));
     setImageFiles(files);
     setPreviewUrls(files.map((file) => URL.createObjectURL(file)));
-    if (files.length !== e.target.files.length) {
-      setErrorMsg("รูปภาพต้องเป็น JPG, PNG หรือ WEBP และมีขนาดไม่เกิน 2MB ต่อรูป");
+    if (files.length !== selectedFiles.length) {
+      const validationMessage = "รูปภาพต้องเป็น JPG, PNG หรือ WEBP และมีขนาดไม่เกิน 2MB ต่อรูป";
+      setImageSelectionError(validationMessage);
+      setErrorMsg(validationMessage);
+    } else {
+      setImageSelectionError("");
+      setErrorMsg("");
     }
   };
 
-  // ส่งฟอร์ม
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (imageSelectionError) {
+      setErrorMsg(imageSelectionError);
+      return;
+    }
     setErrorMsg("");
 
     if (!categoryId) {
@@ -96,7 +107,7 @@ function CreatePost() {
       <div className="card listing-form-card">
         <div className="card-header listing-form-header">
           <span className="marketplace-kicker">ส่งต่ออุปกรณ์ให้คนที่กำลังหา</span>
-          <h1 className="mb-0 fs-3 fw-bold">ลงประกาศ</h1>
+          <h1 className="mb-0 fs-3 fw-bold">โพสต์</h1>
         </div>
         <div className="card-body">
           {errorMsg && (
@@ -107,12 +118,12 @@ function CreatePost() {
 
           <form onSubmit={handleSubmit}>
             <fieldset className="mb-4">
-              <legend className="form-label fw-bold">ประเภทประกาศ</legend>
-              <div className="btn-group" role="group" aria-label="ประเภทประกาศ">
+              <legend className="form-label fw-bold">ประเภทโพสต์</legend>
+              <div className="btn-group" role="group" aria-label="ประเภทโพสต์">
                 <input className="btn-check" type="radio" name="postType" id="post-type-exchange" checked={postType === "exchange"} onChange={() => setPostType("exchange")} />
                 <label className="btn btn-outline-primary" htmlFor="post-type-exchange">แลกเปลี่ยน</label>
                 <input className="btn-check" type="radio" name="postType" id="post-type-discussion" checked={postType === "discussion"} onChange={() => setPostType("discussion")} />
-                <label className="btn btn-outline-primary" htmlFor="post-type-discussion">รีวิว / พูดคุย</label>
+                <label className="btn btn-outline-primary" htmlFor="post-type-discussion">รีวิว</label>
               </div>
             </fieldset>
 
@@ -121,7 +132,7 @@ function CreatePost() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="เช่น ต้องการแลก จอมอนิเตอร์ 24 นิ้ว"
+                placeholder="ต้องการแลกกับอะไรครับ"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
@@ -174,7 +185,7 @@ function CreatePost() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="เช่น คีย์บอร์ด เมาส์ไร้สาย หรือรับทุกข้อเสนอ"
+                placeholder="อยากแลกกับอะไรครับบบ"
                 value={lookingFor}
                 onChange={(e) => setLookingFor(e.target.value)}
               />
@@ -187,7 +198,7 @@ function CreatePost() {
               <textarea
                 className="form-control"
                 rows="4"
-                placeholder="อธิบายรายละเอียดการใช้งาน ตำหนิ หรือเงื่อนไขเพิ่มเติม..."
+                placeholder="อธิบายรายละเอียดการใช้งาน ตำหนิ"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 required

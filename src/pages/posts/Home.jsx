@@ -14,7 +14,6 @@ function Home() {
   const [currentPage, setCurrentPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
 
-  // ดึงรายการหมวดหมู่
   useEffect(() => {
     api
       .get("/categories")
@@ -28,7 +27,6 @@ function Home() {
       });
   }, []);
 
-  // ดึงรายการโพสต์
   useEffect(() => {
     setLoading(true);
     api
@@ -41,7 +39,6 @@ function Home() {
         },
       })
       .then((res) => {
-        // ข้อมูลจาก Controller paginate(10) ข้อมูลโพสต์จะอยู่ใน res.data.data
         const rawData = res.data?.data || (Array.isArray(res.data) ? res.data : []);
         setPosts(Array.isArray(rawData) ? rawData : []);
         setLastPage(res.data?.last_page || 1);
@@ -53,7 +50,6 @@ function Home() {
       .finally(() => setLoading(false));
   }, [keyword, categoryId, postType, currentPage]);
 
-  // ฟังก์ชันดึง URL รูปภาพจาก Accessor image_url ที่อยู่ใน PostImage.php
   const getImageUrl = (images) => {
     if (!Array.isArray(images) || images.length === 0) {
       return "https://placehold.co/300x200?text=%E0%B9%84%E0%B8%A1%E0%B9%88%E0%B8%A1%E0%B8%B5%E0%B8%A3%E0%B8%B9%E0%B8%9B%E0%B8%A0%E0%B8%B2%E0%B8%9E";
@@ -94,7 +90,7 @@ function Home() {
           <input
             type="text"
             className="form-control"
-            placeholder="ค้นหาประกาศ อุปกรณ์ หรือสิ่งที่ต้องการแลก..."
+            placeholder="ค้นหาอุปกรณ์ หรือสิ่งที่ต้องการแลก"
             value={keyword}
             onChange={(e) => {
               setKeyword(e.target.value);
