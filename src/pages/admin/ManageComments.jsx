@@ -33,15 +33,15 @@ export default function ManageComments() {
     return (
         <section className="container-fluid px-0">
             <h1 className="h3 fw-bold mb-1">จัดการความคิดเห็น</h1>
-            <p className="text-secondary mb-4">ความคิดเห็นและคำตอบจากทุกโพสต์</p>
+            <p className="text-secondary mb-4">ความคิดเห็นและคำตอบในทุกประกาศ</p>
             <div className="table-responsive border rounded bg-white">
                 <table className="table table-hover align-middle mb-0">
-                    <thead className="table-light"><tr><th>ผู้แสดงความคิดเห็น</th><th>โพสต์</th><th>ชนิด</th><th>คะแนน</th><th>ข้อความ</th><th>จัดการ</th></tr></thead>
+                    <thead className="table-light"><tr><th>ผู้แสดงความคิดเห็น</th><th>ประกาศ</th><th>ประเภท</th><th>คะแนน</th><th>ความคิดเห็น</th><th>จัดการ</th></tr></thead>
                     <tbody>
                         {comments.map((comment) => <tr key={comment.id}>
                             <td>{comment.user?.name || '-'}</td>
                             <td>{comment.exchange_post?.title || '-'}</td>
-                            <td>{comment.parent_id ? 'Reply' : 'Comment'}</td>
+                            <td>{comment.parent_id ? 'ตอบกลับ' : 'ความคิดเห็น'}</td>
                             <td>{comment.rating ? `${comment.rating} / 5` : '—'}</td>
                             <td style={{ minWidth: '240px', whiteSpace: 'pre-wrap' }}>{comment.content}</td>
                             <td><button type="button" className="btn btn-sm btn-outline-danger" onClick={() => deleteComment(comment.id)}>ลบ</button></td>
@@ -50,7 +50,7 @@ export default function ManageComments() {
                     </tbody>
                 </table>
             </div>
-            {lastPage > 1 && <nav className="mt-3" aria-label="หน้าคอมเมนต์"><ul className="pagination justify-content-center">
+            {lastPage > 1 && <nav className="mt-3" aria-label="หน้าความคิดเห็น"><ul className="pagination justify-content-center">
                 {Array.from({ length: lastPage }, (_, index) => index + 1).map((pageNumber) => <li key={pageNumber} className={`page-item ${pageNumber === page ? 'active' : ''}`}><button className="page-link" onClick={() => setPage(pageNumber)}>{pageNumber}</button></li>)}
             </ul></nav>}
         </section>

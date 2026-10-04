@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import api from '../api/axios';
+import api from '../../api/axios';
 
 export default function PostDetail() {
     const { id } = useParams();
@@ -30,7 +30,7 @@ export default function PostDetail() {
         user = null;
     }
 
-    const fetchPostDetail = async () => {
+    const fetchPostDetail = useCallback(async () => {
         setLoading(true);
         setLoadError('');
         try {
@@ -41,16 +41,41 @@ export default function PostDetail() {
             console.error('Failed to fetch post detail:', error);
             setPost(null);
             setLoadError(error.response?.status === 404
-                ? 'ไม่พบโพสต์นี้ หรือโพสต์ยังไม่เปิดให้ผู้ใช้ทั่วไปดู'
-                : error.response?.data?.message || 'ไม่สามารถโหลดรายละเอียดโพสต์ได้');
+                ? 'ไม่พบประกาศนี้ หรือประกาศยังไม่เปิดให้ดู'
+                : error.response?.data?.message || 'โหลดรายละเอียดประกาศไม่สำเร็จ');
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
 
     useEffect(() => {
         fetchPostDetail();
-    }, [id]);
+    }, [fetchPostDetail]);
+
+    useEffect(() => {
+        if (!post?.id) return undefined;
+
+        let cancelled = false;
+        let timeoutId;
+        const refreshPost = async () => {
+            if (document.visibilityState === 'visible') {
+                try {
+                    const response = await api.get(`/exchange-posts/${id}`);
+                    if (!cancelled) setPost(response.data);
+                } catch (error) {
+                    if (!cancelled) console.error('ไม่สามารถอัปเดตโพสต์และความคิดเห็นได้:', error);
+                }
+            }
+
+            if (!cancelled) timeoutId = window.setTimeout(refreshPost, 5000);
+        };
+
+        timeoutId = window.setTimeout(refreshPost, 5000);
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timeoutId);
+        };
+    }, [id, post?.id]);
 
     const handleToggleLike = async () => {
         if (!token) {
@@ -62,7 +87,7 @@ export default function PostDetail() {
             const response = await api.post(`/exchange-posts/${id}/like`);
             setPost((current) => ({ ...current, is_liked: response.data.liked, likes_count: response.data.likes_count }));
         } catch (error) {
-            alert(error.response?.data?.message || 'ไม่สามารถกดถูกใจได้');
+            alert(error.response?.data?.message || 'กดถูกใจไม่สำเร็จ');
         } finally {
             setLiking(false);
         }
@@ -100,7 +125,7 @@ export default function PostDetail() {
             }
         } catch (error) {
             const validationMessage = Object.values(error.response?.data?.errors || {}).flat()[0];
-            alert(validationMessage || error.response?.data?.message || 'ไม่สามารถส่งความคิดเห็นได้');
+            alert(validationMessage || error.response?.data?.message || 'ส่งความคิดเห็นไม่สำเร็จ');
         } finally {
             setSubmitting(false);
         }
@@ -127,7 +152,7 @@ export default function PostDetail() {
             setEditingCommentId(null);
         } catch (error) {
             const validationMessage = Object.values(error.response?.data?.errors || {}).flat()[0];
-            alert(validationMessage || error.response?.data?.message || 'ไม่สามารถแก้ไขความคิดเห็นได้');
+            alert(validationMessage || error.response?.data?.message || 'แก้ไขความคิดเห็นไม่สำเร็จ');
         }
     };
 
@@ -145,7 +170,7 @@ export default function PostDetail() {
                     })),
             }));
         } catch (error) {
-            alert(error.response?.data?.message || 'ไม่สามารถลบความคิดเห็นได้');
+            alert(error.response?.data?.message || 'ลบความคิดเห็นไม่สำเร็จ');
         }
     };
 
@@ -171,8 +196,8 @@ export default function PostDetail() {
     if (!post) {
         return (
             <main className="container py-5 text-center">
-                <h1 className="h4 text-secondary">{loadError || 'ไม่พบข้อมูลรายการที่คุณค้นหา'}</h1>
-                <button className="btn btn-outline-secondary mt-3" onClick={() => navigate('/')}>กลับสู่หน้าหลัก</button>
+                <h1 className="h4 text-secondary">{loadError || 'ไม่พบประกาศนี้'}</h1>
+                <button className="btn btn-outline-secondary mt-3" onClick={() => navigate('/')}>กลับหน้าหลัก</button>
                 {loadError && <button className="btn btn-primary mt-3 ms-2" onClick={fetchPostDetail}>ลองอีกครั้ง</button>}
             </main>
         );
@@ -187,7 +212,7 @@ export default function PostDetail() {
                 {comment.user?.avatar_url && <img src={comment.user.avatar_url} alt="" className="rounded-circle" width="36" height="36" />}
                 <div className="flex-grow-1">
                     <div className="d-flex flex-wrap justify-content-between gap-2">
-                        <strong>{comment.user?.name || 'ผู้ใช้งาน'}</strong>
+                        <strong>{comment.user?.name || 'ผู้ใช้'}</strong>
                         <time className="small text-secondary">{new Date(comment.created_at).toLocaleString('th-TH')}</time>
                     </div>
                     {post.post_type === 'exchange' && comment.rating && <div className="text-warning" aria-label={`${comment.rating} จาก 5 ดาว`}>{'★'.repeat(comment.rating)}{'☆'.repeat(5 - comment.rating)}</div>}
@@ -216,15 +241,15 @@ export default function PostDetail() {
     );
 
     return (
-        <main className="bg-light min-vh-100 py-4">
+        <main className="post-detail-page min-vh-100 py-4">
             <div className="container" style={{ maxWidth: '1000px' }}>
                 <button className="btn btn-link text-secondary text-decoration-none px-0 mb-3" onClick={() => navigate(-1)}>ย้อนกลับ</button>
-                <section className="card border-0 shadow-sm mb-4">
+                <section className="card post-detail-card mb-4">
                     <div className="card-body p-3 p-md-4">
                         <div className="row g-4">
                             <div className="col-md-5">
                                 <img
-                                    src={images[activeImageIndex]?.image_url || 'https://placehold.co/600x400?text=No+Image'}
+                                    src={images[activeImageIndex]?.image_url || 'https://placehold.co/600x400?text=%E0%B9%84%E0%B8%A1%E0%B9%88%E0%B8%A1%E0%B8%B5%E0%B8%A3%E0%B8%B9%E0%B8%9B%E0%B8%A0%E0%B8%B2%E0%B8%9E'}
                                     alt={post.title}
                                     className="w-100 rounded object-fit-cover"
                                     style={{ height: '320px' }}
@@ -240,22 +265,22 @@ export default function PostDetail() {
                             <div className="col-md-7 d-flex flex-column">
                                 <div className="d-flex justify-content-between align-items-center gap-2 mb-2">
                                     {post.post_type === 'exchange' && <span className="badge text-bg-success">สภาพ {post.condition_percent}%</span>}
-                                    <button type="button" className={`btn btn-sm ${post.is_liked ? 'btn-danger' : 'btn-outline-danger'}`} onClick={handleToggleLike} disabled={liking}>
-                                        {liking ? 'กำลังบันทึก...' : `ถูกใจ (${post.likes_count || 0})`}
+                                    <button type="button" className={`btn btn-sm ${post.is_liked ? 'btn-danger btn-liked' : 'btn-outline-danger'}`} onClick={handleToggleLike} disabled={liking}>
+                                        {liking ? 'กำลังบันทึก...' : `ถูกใจ ${post.likes_count || 0}`}
                                     </button>
                                 </div>
                                 <h1 className="h3 fw-bold">{post.title}</h1>
-                                <p className="small text-secondary mb-2">หมวดหมู่: {post.category?.name || 'ไม่ระบุหมวดหมู่'}</p>
+                                <p className="small text-secondary mb-2">หมวดหมู่: {post.category?.name || 'ไม่ระบุ'}</p>
                                 {post.post_type === 'discussion' && post.gadget_name && <p className="small text-secondary">อุปกรณ์: {post.gadget_name}</p>}
                                 <p className="text-secondary" style={{ whiteSpace: 'pre-line' }}>{post.description}</p>
-                                {post.post_type === 'exchange' && post.looking_for && <p><strong>สิ่งที่ต้องการแลก:</strong> {post.looking_for}</p>}
+                                {post.post_type === 'exchange' && post.looking_for && <p><strong>ต้องการแลกกับ:</strong> {post.looking_for}</p>}
                                 <div className="mt-auto pt-3 border-top small text-secondary">
-                                    ผู้โพสต์: <Link to={`/users/${post.user_id}`}>{post.user?.name || 'ผู้ใช้งาน'}</Link>
+                                    ผู้ลงประกาศ: <Link to={`/users/${post.user_id}`}>{post.user?.name || 'ผู้ใช้'}</Link>
                                     <span className="ms-3">{new Date(post.created_at).toLocaleDateString('th-TH')}</span>
                                 </div>
                                 {post.post_type === 'exchange' && token && !isOwner && <div className="d-flex flex-wrap gap-2 mt-3">
-                                    <Link className="btn btn-primary btn-sm" to={`/messages?user_id=${post.user_id}&exchange_post_id=${post.id}`}>ส่งข้อความเกี่ยวกับประกาศนี้</Link>
-                                    <button className="btn btn-outline-danger btn-sm" onClick={() => setReporting((current) => !current)}>{reporting ? 'ยกเลิกรายงาน' : 'รายงานโพสต์'}</button>
+                                    <Link className="btn btn-primary btn-sm" to={`/messages?user_id=${post.user_id}&exchange_post_id=${post.id}`}>ส่งข้อความ</Link>
+                                    <button className="btn btn-outline-danger btn-sm" onClick={() => setReporting((current) => !current)}>{reporting ? 'ยกเลิกรายงาน' : 'รายงานประกาศ'}</button>
                                 </div>}
                                 {post.post_type === 'exchange' && reporting && <form className="mt-3" onSubmit={handleReport}>
                                     <label className="form-label" htmlFor="post-report-reason">เหตุผลที่รายงาน</label>
@@ -268,9 +293,9 @@ export default function PostDetail() {
                     </div>
                 </section>
 
-                <section className="card border-0 shadow-sm">
+                <section className="card post-comments-card">
                     <div className="card-body p-3 p-md-4">
-                        <h2 className="h5 fw-bold mb-4">ความคิดเห็นและคะแนน</h2>
+                        <h2 className="h5 fw-bold mb-4">ความคิดเห็น</h2>
                         {token ? <form className="bg-light rounded p-3 mb-4" onSubmit={handleCommentSubmit}>
                             <label className="form-label" htmlFor="comment-content">แสดงความคิดเห็น</label>
                             <textarea id="comment-content" className="form-control mb-2" rows="3" maxLength="1000" value={commentText} onChange={(event) => setCommentText(event.target.value)} required />
@@ -281,7 +306,7 @@ export default function PostDetail() {
                                 </select>}
                                 <button className="btn btn-primary" type="submit" disabled={submitting}>{submitting ? 'กำลังส่ง...' : 'ส่งความคิดเห็น'}</button>
                             </div>
-                        </form> : <div className="alert alert-light text-center">กรุณา <Link to="/login">เข้าสู่ระบบ</Link> เพื่อแสดงความคิดเห็น</div>}
+                        </form> : <div className="alert alert-light text-center">                        <Link to="/login">เข้าสู่ระบบ</Link> เพื่อแสดงความคิดเห็น</div>}
 
                         {post.comments?.length ? <div className="d-flex flex-column gap-3">
                             {post.comments.map((comment) => <div key={comment.id}>

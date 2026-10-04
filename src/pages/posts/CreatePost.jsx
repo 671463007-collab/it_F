@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api/axios";
+import api from "../../api/axios";
 
 function CreatePost() {
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ function CreatePost() {
     setErrorMsg("");
 
     if (!categoryId) {
-      setErrorMsg("กรุณาเลือกหมวดหมู่สินค้า");
+      setErrorMsg("กรุณาเลือกหมวดหมู่");
       return;
     }
 
@@ -74,7 +74,7 @@ function CreatePost() {
     api
       .post("/exchange-posts", formData)
       .then((res) => {
-        alert(res.data.message || "สร้างประกาศเรียบร้อยแล้ว");
+        alert(res.data.message || "ลงประกาศแล้ว");
         navigate("/my-posts");
       })
       .catch((err) => {
@@ -85,17 +85,18 @@ function CreatePost() {
         const msg =
           validationMessage ||
           err.response?.data?.message ||
-          "เกิดข้อผิดพลาดในการบันทึกข้อมูล";
+          "บันทึกประกาศไม่สำเร็จ กรุณาลองใหม่";
         setErrorMsg(msg);
       })
       .finally(() => setLoading(false));
   };
 
   return (
-    <div className="container mt-4 mb-5" style={{ maxWidth: "700px" }}>
-      <div className="card shadow-sm">
-        <div className="card-header bg-primary text-white">
-          <h4 className="mb-0 fs-5 fw-bold">สร้างโพสต์</h4>
+    <div className="container post-form-page py-4 py-lg-5 mb-4" style={{ maxWidth: "820px" }}>
+      <div className="card listing-form-card">
+        <div className="card-header listing-form-header">
+          <span className="marketplace-kicker">ส่งต่ออุปกรณ์ให้คนที่กำลังหา</span>
+          <h1 className="mb-0 fs-3 fw-bold">ลงประกาศ</h1>
         </div>
         <div className="card-body">
           {errorMsg && (
@@ -106,10 +107,10 @@ function CreatePost() {
 
           <form onSubmit={handleSubmit}>
             <fieldset className="mb-4">
-              <legend className="form-label fw-bold">ประเภทโพสต์</legend>
-              <div className="btn-group" role="group" aria-label="ประเภทโพสต์">
+              <legend className="form-label fw-bold">ประเภทประกาศ</legend>
+              <div className="btn-group" role="group" aria-label="ประเภทประกาศ">
                 <input className="btn-check" type="radio" name="postType" id="post-type-exchange" checked={postType === "exchange"} onChange={() => setPostType("exchange")} />
-                <label className="btn btn-outline-primary" htmlFor="post-type-exchange">แลกเปลี่ยนอุปกรณ์</label>
+                <label className="btn btn-outline-primary" htmlFor="post-type-exchange">แลกเปลี่ยน</label>
                 <input className="btn-check" type="radio" name="postType" id="post-type-discussion" checked={postType === "discussion"} onChange={() => setPostType("discussion")} />
                 <label className="btn btn-outline-primary" htmlFor="post-type-discussion">รีวิว / พูดคุย</label>
               </div>
@@ -149,7 +150,7 @@ function CreatePost() {
 
               {postType === "exchange" ? <div className="col-md-6 mb-3">
                 <label className="form-label fw-bold">
-                  สภาพสินค้า (%) <span className="text-danger">*</span>
+                  สภาพ (%) <span className="text-danger">*</span>
                 </label>
                 <input
                   type="number"
@@ -168,12 +169,12 @@ function CreatePost() {
 
             {postType === "exchange" && <div className="mb-3">
               <label className="form-label fw-bold">
-                สิ่งของที่สนใจแลกเปลี่ยน (Looking For)
+                ต้องการแลกกับ
               </label>
               <input
                 type="text"
                 className="form-control"
-                placeholder="เช่น คีย์บอร์ด Mechanical, เมาส์ไร้สาย หรือ สนใจทุกข้อเสนอ"
+                placeholder="เช่น คีย์บอร์ด เมาส์ไร้สาย หรือรับทุกข้อเสนอ"
                 value={lookingFor}
                 onChange={(e) => setLookingFor(e.target.value)}
               />
@@ -181,7 +182,7 @@ function CreatePost() {
 
             <div className="mb-3">
               <label className="form-label fw-bold">
-                รายละเอียดสินค้า <span className="text-danger">*</span>
+                รายละเอียดอุปกรณ์ <span className="text-danger">*</span>
               </label>
               <textarea
                 className="form-control"
@@ -194,7 +195,7 @@ function CreatePost() {
             </div>
 
             <div className="mb-3">
-              <label className="form-label fw-bold">อัปโหลดรูปภาพสินค้า</label>
+              <label className="form-label fw-bold">รูปภาพ</label>
               <input
                 type="file"
                 className="form-control"
@@ -209,10 +210,10 @@ function CreatePost() {
 
             {previewUrls.length > 0 && (
               <div className="mb-3">
-                <p className="small text-muted mb-1">ตัวอย่างรูปภาพ:</p>
+                <p className="small text-muted mb-1">ตัวอย่างรูปภาพ</p>
                 <div className="d-flex flex-wrap gap-2">
                   {previewUrls.map((url, index) => (
-                    <img key={url} src={url} alt={`Preview ${index + 1}`} className="img-thumbnail" style={{ width: "120px", height: "100px", objectFit: "contain" }} />
+                    <img key={url} src={url} alt={`รูปที่เลือก ${index + 1}`} className="img-thumbnail" style={{ width: "120px", height: "100px", objectFit: "contain" }} />
                   ))}
                 </div>
               </div>

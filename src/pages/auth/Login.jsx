@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import api from "../api/axios";
+import api from "../../api/axios";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -26,7 +26,7 @@ function Login() {
         if (error.response && error.response.data.message) {
           setErrorMsg(error.response.data.message);
         } else {
-          setErrorMsg("เกิดข้อผิดพลาด ไม่สามารถเข้าสู่ระบบได้");
+          setErrorMsg("เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่");
         }
       })
       .finally(() => {
@@ -35,7 +35,9 @@ function Login() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: "400px", marginTop: "80px" }}>
+    <div className="container auth-page py-5">
+      <div className="auth-card">
+      <div className="auth-brand"><span className="brand-mark">IT</span><span>ไอทีมือสอง</span></div>
       <h2 className="text-center mb-4">เข้าสู่ระบบ</h2>
 
       {/* Alert เปลี่ยนมาใช้ div คลาสธรรมดา */}
@@ -53,7 +55,7 @@ function Login() {
             type="email"
             className="form-control"
             id="floatingEmail"
-            placeholder="name@example.com"
+            placeholder="อีเมล"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -67,7 +69,7 @@ function Login() {
             type="password"
             className="form-control"
             id="floatingPassword"
-            placeholder="Password"
+            placeholder="รหัสผ่าน"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -88,6 +90,7 @@ function Login() {
       <p className="text-center mt-3">
         ยังไม่มีบัญชี? <Link to="/register">สมัครสมาชิก</Link>
       </p>
+      </div>
     </div>
   );
 }

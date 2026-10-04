@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import api from "../api/axios";
+import api from "../../api/axios";
 
 function Register() {
   const [name, setName] = useState("");
@@ -36,7 +36,7 @@ function Register() {
         if (error.response && error.response.data.errors) {
           setErrors(error.response.data.errors);
         } else {
-          setErrors({ general: ["เกิดข้อผิดพลาด ไม่สามารถสมัครสมาชิกได้"] });
+          setErrors({ general: ["สมัครสมาชิกไม่สำเร็จ กรุณาลองใหม่"] });
         }
       })
       .finally(() => {
@@ -45,7 +45,9 @@ function Register() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: "400px", marginTop: "60px" }}>
+    <div className="container auth-page py-5">
+      <div className="auth-card">
+      <div className="auth-brand"><span className="brand-mark">IT</span><span>ไอทีมือสอง</span></div>
       <h2 className="text-center mb-4">สมัครสมาชิก</h2>
 
       {/* Error รวม (General Error) */}
@@ -79,7 +81,7 @@ function Register() {
             type="email"
             className={`form-control ${errors.email ? "is-invalid" : ""}`}
             id="floatingEmail"
-            placeholder="name@example.com"
+            placeholder="อีเมล"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -94,7 +96,7 @@ function Register() {
             type="password"
             className={`form-control ${errors.password ? "is-invalid" : ""}`}
             id="floatingPassword"
-            placeholder="Password"
+            placeholder="รหัสผ่าน"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -109,7 +111,7 @@ function Register() {
             type="password"
             className="form-control"
             id="floatingPasswordConfirm"
-            placeholder="Confirm Password"
+            placeholder="ยืนยันรหัสผ่าน"
             value={passwordConfirmation}
             onChange={(e) => setPasswordConfirmation(e.target.value)}
             required
@@ -125,6 +127,7 @@ function Register() {
       <p className="text-center mt-3">
         มีบัญชีอยู่แล้ว? <Link to="/login">เข้าสู่ระบบ</Link>
       </p>
+      </div>
     </div>
   );
 }

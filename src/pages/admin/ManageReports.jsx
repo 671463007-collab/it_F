@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 
-const statusLabels = { pending: 'รอตรวจสอบ', resolved: 'ดำเนินการแล้ว', dismissed: 'ยกเลิกคำร้อง' };
+const statusLabels = { pending: 'รอตรวจสอบ', resolved: 'จัดการแล้ว', dismissed: 'ปิดรายงาน' };
 
 export default function ManageReports() {
     const [reports, setReports] = useState([]);
@@ -35,7 +35,7 @@ export default function ManageReports() {
     return (
         <section className="container-fluid px-0">
             <h1 className="h3 fw-bold mb-1">รายงานปัญหา</h1>
-            <p className="text-secondary mb-4">ตรวจสอบรายงานและกำหนดผลดำเนินการ</p>
+            <p className="text-secondary mb-4">ตรวจสอบและอัปเดตสถานะรายงาน</p>
             <div className="mb-3" style={{ maxWidth: '320px' }}>
                 <label className="form-label" htmlFor="report-status-filter">กรองตามสถานะ</label>
                 <select id="report-status-filter" className="form-select" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}>
@@ -45,7 +45,7 @@ export default function ManageReports() {
             </div>
             <div className="table-responsive border rounded bg-white">
                 <table className="table table-hover align-middle mb-0">
-                    <thead className="table-light"><tr><th>ผู้รายงาน</th><th>ผู้ถูกรายงาน</th><th>โพสต์</th><th>เหตุผล</th><th>สถานะ</th></tr></thead>
+                    <thead className="table-light"><tr><th>ผู้รายงาน</th><th>ผู้ถูกรายงาน</th><th>ประกาศ</th><th>เหตุผล</th><th>สถานะ</th></tr></thead>
                     <tbody>
                         {reports.map((report) => <tr key={report.id}>
                             <td>{report.reporter?.name || '-'}</td><td>{report.reported_user?.name || '-'}</td><td>{report.exchange_post?.title || '—'}</td><td>{report.reason}</td>

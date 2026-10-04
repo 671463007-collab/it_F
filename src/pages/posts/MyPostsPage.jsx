@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../api/axios';
+import api from '../../api/axios';
 
 const statusLabels = {
     pending: 'รอตรวจสอบ',
-    open: 'เปิดแลกเปลี่ยน',
-    closed: 'ปิดการแลกเปลี่ยน',
+    open: 'เปิดอยู่',
+    closed: 'ปิดแล้ว',
     hidden: 'ซ่อนโดยผู้ดูแล',
 };
 
@@ -24,7 +24,7 @@ export default function MyPostsPage() {
             const response = await api.get('/my/posts');
             setPosts(response.data?.data || []);
         } catch (error) {
-            console.error('ไม่สามารถโหลดโพสต์ของคุณได้:', error);
+            console.error('โหลดประกาศของฉันไม่สำเร็จ:', error);
         } finally {
             setLoading(false);
         }
@@ -38,12 +38,12 @@ export default function MyPostsPage() {
     }, []);
 
     const handleDelete = async (postId) => {
-        if (!window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบโพสต์นี้?')) return;
+        if (!window.confirm('ต้องการลบประกาศนี้หรือไม่?')) return;
         try {
             await api.delete(`/exchange-posts/${postId}`);
             setPosts((current) => current.filter((post) => post.id !== postId));
         } catch (error) {
-            alert(error.response?.data?.message || 'ไม่สามารถลบโพสต์ได้');
+            alert(error.response?.data?.message || 'ลบประกาศไม่สำเร็จ');
         }
     };
 
@@ -67,7 +67,7 @@ export default function MyPostsPage() {
             await api.post(`/exchange-posts/${post.id}`, payload);
             await fetchMyPosts();
         } catch (error) {
-            alert(error.response?.data?.message || 'ไม่สามารถเปลี่ยนสถานะได้');
+            alert(error.response?.data?.message || 'เปลี่ยนสถานะประกาศไม่สำเร็จ');
         }
     };
 
@@ -104,19 +104,19 @@ export default function MyPostsPage() {
             await fetchMyPosts();
         } catch (error) {
             const validationMessage = Object.values(error.response?.data?.errors || {}).flat()[0];
-            alert(validationMessage || error.response?.data?.message || 'แก้ไขโพสต์ไม่สำเร็จ');
+            alert(validationMessage || error.response?.data?.message || 'แก้ไขประกาศไม่สำเร็จ');
         } finally {
             setSaving(false);
         }
     };
 
-    if (loading) return <div className="container py-5 text-center">กำลังโหลดข้อมูล...</div>;
+    if (loading) return <div className="container py-5 text-center">กำลังโหลด...</div>;
 
     return (
-        <main className="container py-4" style={{ maxWidth: '1000px' }}>
-            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                <h1 className="h3 fw-bold mb-0">โพสต์ของฉัน</h1>
-                <Link to="/create-post" className="btn btn-primary">+ สร้างโพสต์ใหม่</Link>
+        <main className="container page-surface py-4 py-lg-5" style={{ maxWidth: '1000px' }}>
+            <div className="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                <h1 className="h3 fw-bold mb-0">ประกาศของฉัน</h1>
+                <Link to="/create-post" className="btn btn-primary">+ ลงประกาศ</Link>
             </div>
             <ul className="nav nav-tabs mb-4">
                 {[["all", "ทั้งหมด"], ["exchange", "แลกเปลี่ยน"], ["discussion", "รีวิว / พูดคุย"]].map(([type, label]) => (
@@ -124,14 +124,14 @@ export default function MyPostsPage() {
                 ))}
             </ul>
             {posts.filter((post) => postTypeFilter === 'all' || (post.post_type || 'exchange') === postTypeFilter).length === 0 ? (
-                <div className="alert alert-light border text-center">คุณยังไม่มีประกาศขอแลกเปลี่ยนสินค้า</div>
+                <div className="alert alert-light border text-center">ยังไม่มีประกาศ</div>
             ) : (
                 <div className="d-flex flex-column gap-3">
                     {posts.filter((post) => postTypeFilter === 'all' || (post.post_type || 'exchange') === postTypeFilter).map((post) => (
-                        <article key={post.id} className="card border-0 shadow-sm">
+                        <article key={post.id} className="card account-listing-card">
                             <div className="card-body">
                                 <div className="d-flex flex-wrap justify-content-between gap-3">
-                                    <div className="flex-grow-1">
+                                    <Link to={`/posts/${post.id}`} className="flex-grow-1 text-decoration-none text-reset" aria-label={`ดูประกาศ: ${post.title}`}>
                                         <div className="d-flex align-items-center gap-2 mb-2">
                                             <span className={`badge ${(post.post_type || 'exchange') === 'discussion' ? 'text-bg-info' : 'text-bg-primary'}`}>{(post.post_type || 'exchange') === 'discussion' ? 'รีวิว / พูดคุย' : 'แลกเปลี่ยน'}</span>
                                             <span className={`badge ${post.status === 'open' ? 'text-bg-success' : post.status === 'pending' ? 'text-bg-warning' : post.status === 'hidden' ? 'text-bg-danger' : 'text-bg-secondary'}`}>
@@ -142,11 +142,11 @@ export default function MyPostsPage() {
                                         <h2 className="h5 fw-bold">{post.title}</h2>
                                         <p className="text-secondary mb-2">{post.description}</p>
                                         {(post.post_type || 'exchange') === 'exchange' && post.looking_for && <div className="small">ต้องการแลกกับ: {post.looking_for}</div>}
-                                    </div>
+                                    </Link>
                                     <div className="d-flex align-items-start gap-2">
                                         {['open', 'closed'].includes(post.status) && (
                                             <button className={`btn btn-sm ${post.status === 'open' ? 'btn-outline-warning' : 'btn-outline-success'}`} onClick={() => handleToggleStatus(post)}>
-                                                {post.status === 'open' ? 'ปิดการแลก' : 'เปิดอีกครั้ง'}
+                                                {post.status === 'open' ? 'ปิดประกาศ' : 'เปิดประกาศ'}
                                             </button>
                                         )}
                                         <button className="btn btn-sm btn-outline-primary" onClick={() => startEditing(post)}>แก้ไข</button>
@@ -174,11 +174,11 @@ export default function MyPostsPage() {
                                             <textarea className="form-control" value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} required />
                                         </div>
                                         {draft.post_type === 'exchange' && <div className="col-md-6">
-                                            <label className="form-label">สภาพสินค้า: {draft.condition_percent}%</label>
+                                            <label className="form-label">สภาพ: {draft.condition_percent}%</label>
                                             <input className="form-range" type="range" min="0" max="100" value={draft.condition_percent} onChange={(event) => setDraft({ ...draft, condition_percent: event.target.value })} />
                                         </div>}
                                         {draft.post_type === 'exchange' && <div className="col-md-6">
-                                            <label className="form-label">สิ่งที่ต้องการแลก</label>
+                                            <label className="form-label">ต้องการแลกกับ</label>
                                             <input className="form-control" value={draft.looking_for} onChange={(event) => setDraft({ ...draft, looking_for: event.target.value })} />
                                         </div>}
                                         <div className="col-12">

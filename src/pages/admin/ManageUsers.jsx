@@ -1,24 +1,27 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 
+const statusLabels = { active: 'ใช้งาน', banned: 'ถูกระงับ' };
+
 export default function ManageUsers() {
     const [users, setUsers] = useState([]);
     const [keyword, setKeyword] = useState('');
     const [status, setStatus] = useState('');
+    const [showDeleted, setShowDeleted] = useState(false);
     const [page, setPage] = useState(1);
     const [lastPage, setLastPage] = useState(1);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         setLoading(true);
-        api.get('/admin/users', { params: { keyword, status, page } })
+        api.get('/admin/users', { params: { keyword, status, only_trashed: showDeleted, page } })
             .then((response) => {
                 setUsers(response.data.data || []);
                 setLastPage(response.data.last_page || 1);
             })
             .catch((error) => console.error('ไม่สามารถโหลดรายชื่อผู้ใช้ได้:', error))
             .finally(() => setLoading(false));
-    }, [keyword, status, page]);
+    }, [keyword, status, showDeleted, page]);
 
     const toggleStatus = async (userId) => {
         try {
@@ -27,6 +30,25 @@ export default function ManageUsers() {
             setUsers((current) => current.map((user) => user.id === userId ? { ...user, status: updatedUser.status } : user));
         } catch (error) {
             alert(error.response?.data?.message || 'เปลี่ยนสถานะผู้ใช้ไม่สำเร็จ');
+        }
+    };
+
+    const deleteUser = async (userId) => {
+        if (!window.confirm('ย้ายบัญชีนี้ไปถังขยะหรือไม่? ผู้ใช้จะเข้าสู่ระบบไม่ได้')) return;
+        try {
+            await api.delete(`/admin/users/${userId}`);
+            setUsers((current) => current.filter((user) => user.id !== userId));
+        } catch (error) {
+            alert(error.response?.data?.message || 'ย้ายบัญชีไปถังขยะไม่สำเร็จ');
+        }
+    };
+
+    const restoreUser = async (userId) => {
+        try {
+            await api.patch(`/admin/users/${userId}/restore`);
+            setUsers((current) => current.filter((user) => user.id !== userId));
+        } catch (error) {
+            alert(error.response?.data?.message || 'กู้คืนบัญชีไม่สำเร็จ');
         }
     };
 
@@ -43,7 +65,8 @@ export default function ManageUsers() {
             <p className="text-secondary mb-4">ค้นหาสมาชิกและจัดการสถานะบัญชี</p>
             <div className="row g-2 mb-3">
                 <div className="col-md-8"><input className="form-control" value={keyword} placeholder="ค้นหาชื่อหรืออีเมล" onChange={resetPage(setKeyword)} /></div>
-                <div className="col-md-4"><select className="form-select" value={status} onChange={resetPage(setStatus)}><option value="">ทุกสถานะ</option><option value="active">ใช้งานปกติ</option><option value="banned">ถูกแบน</option></select></div>
+                <div className="col-md-2"><select className="form-select" value={status} onChange={resetPage(setStatus)} disabled={showDeleted}><option value="">ทุกสถานะ</option><option value="active">ใช้งาน</option><option value="banned">ถูกระงับ</option></select></div>
+                <div className="col-md-2"><select className="form-select" value={showDeleted ? 'deleted' : 'active'} onChange={(event) => { setShowDeleted(event.target.value === 'deleted'); setStatus(''); setPage(1); }}><option value="active">บัญชีที่ใช้งาน</option><option value="deleted">ถังขยะ</option></select></div>
             </div>
             <div className="table-responsive border rounded bg-white">
                 <table className="table table-hover align-middle mb-0">
@@ -52,8 +75,14 @@ export default function ManageUsers() {
                         {users.map((user) => <tr key={user.id}>
                             <td>{user.name}</td>
                             <td>{user.email}</td>
-                            <td><span className={`badge ${user.status === 'banned' ? 'text-bg-danger' : 'text-bg-success'}`}>{user.status}</span></td>
-                            <td><button type="button" className={`btn btn-sm ${user.status === 'banned' ? 'btn-outline-success' : 'btn-outline-danger'}`} onClick={() => toggleStatus(user.id)}>{user.status === 'banned' ? 'ปลดแบน' : 'แบนผู้ใช้'}</button></td>
+                            <td>{showDeleted ? <span className="badge text-bg-secondary">ลบแล้ว</span> : <span className={`badge ${user.status === 'banned' ? 'text-bg-danger' : 'text-bg-success'}`}>{statusLabels[user.status] || user.status}</span>}</td>
+                            <td>{showDeleted
+                                ? <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => restoreUser(user.id)}>กู้คืน</button>
+                                : <div className="d-flex flex-wrap gap-2">
+                                    <button type="button" className={`btn btn-sm ${user.status === 'banned' ? 'btn-outline-success' : 'btn-outline-danger'}`} onClick={() => toggleStatus(user.id)}>{user.status === 'banned' ? 'ปลดระงับ' : 'ระงับบัญชี'}</button>
+                                    <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => deleteUser(user.id)}>ลบ</button>
+                                </div>}
+                            </td>
                         </tr>)}
                         {users.length === 0 && <tr><td colSpan="4" className="text-center text-secondary py-4">ไม่พบผู้ใช้</td></tr>}
                     </tbody>

@@ -1,30 +1,18 @@
 import { Link, useNavigate } from "react-router-dom";
-import api from "../api/axios";
+import logout from "../../utils/logout";
 
-function Navbar() {
+function UserNavbar() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user"));
-
-  const handleLogout = async () => {
-    try {
-      if (token) await api.post("/logout");
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      navigate("/login");
-    }
-  };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav className="navbar navbar-expand-lg navbar-dark app-navbar">
       <div className="container">
-        <Link className="navbar-brand fw-bold" to="/">
-          IT Management System
+        <Link className="navbar-brand fw-bold d-flex align-items-center gap-2" to="/">
+          <span className="brand-mark" aria-hidden="true">IT</span>
+          <span>ไอทีมือสอง</span>
         </Link>
-        
+
         <button
           className="navbar-toggler"
           type="button"
@@ -46,26 +34,27 @@ function Navbar() {
           <ul className="navbar-nav align-items-center">
             {token ? (
               <>
-                {/* เพิ่มปุ่มลงประกาศตรงนี้ */}
                 <li className="nav-item me-3">
-                  <Link className="btn btn-success btn-sm" to="/create-post">
+                  <Link className="btn btn-brand-light btn-sm" to="/create-post">
                     + ลงประกาศ
                   </Link>
                 </li>
-                <li className="nav-item me-3"><Link className="nav-link" to="/my-posts">ประกาศของฉัน</Link></li>
-                <li className="nav-item me-3"><Link className="nav-link" to="/messages">ข้อความ</Link></li>
-                <li className="nav-item me-3"><Link className="nav-link" to="/reviews">รีวิวอุปกรณ์</Link></li>
-                <li className="nav-item me-3"><Link className="nav-link" to="/my-reviews">รีวิวของฉัน</Link></li>
-                <li className="nav-item me-3"><Link className="nav-link" to="/profile">โปรไฟล์</Link></li>
-                <li className="nav-item">
-                  <span className="nav-link text-white me-2">
-                    สวัสดี, {user?.name}
-                  </span>
+                <li className="nav-item me-3">
+                  <Link className="nav-link" to="/my-posts">ประกาศของฉัน</Link>
+                </li>
+                <li className="nav-item me-3">
+                  <Link className="nav-link" to="/my-reports">รายงานของฉัน</Link>
+                </li>
+                <li className="nav-item me-3">
+                  <Link className="nav-link" to="/messages">แชต</Link>
+                </li>
+                <li className="nav-item me-3">
+                  <Link className="nav-link" to="/profile">โปรไฟล์</Link>
                 </li>
                 <li className="nav-item">
                   <button
                     className="btn btn-outline-danger btn-sm"
-                    onClick={handleLogout}
+                    onClick={() => logout(navigate)}
                   >
                     ออกจากระบบ
                   </button>
@@ -92,4 +81,4 @@ function Navbar() {
   );
 }
 
-export default Navbar;
+export default UserNavbar;

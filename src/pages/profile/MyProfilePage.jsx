@@ -1,12 +1,9 @@
-import { useEffect, useState } from 'react';
-import api from '../api/axios';
+import { useEffect, useRef, useState } from 'react';
+import api from '../../api/axios';
 
 const emptyProfile = {
     name: '',
     email: '',
-    phone: '',
-    line_id: '',
-    facebook_contact: '',
     role: '',
     status: '',
     avatar_url: '',
@@ -15,6 +12,8 @@ const emptyProfile = {
 export default function MyProfilePage() {
     const [profile, setProfile] = useState(emptyProfile);
     const [avatar, setAvatar] = useState(null);
+    const [avatarPreview, setAvatarPreview] = useState('');
+    const avatarPreviewUrlRef = useRef(null);
     const [password, setPassword] = useState('');
     const [passwordConfirmation, setPasswordConfirmation] = useState('');
     const [loading, setLoading] = useState(true);
@@ -25,9 +24,32 @@ export default function MyProfilePage() {
     useEffect(() => {
         api.get('/me')
             .then((response) => setProfile({ ...emptyProfile, ...response.data }))
-            .catch((error) => setMessage(error.response?.data?.message || 'โหลดข้อมูลโปรไฟล์ไม่สำเร็จ'))
+            .catch((error) =>             setMessage(error.response?.data?.message || 'โหลดโปรไฟล์ไม่สำเร็จ'))
             .finally(() => setLoading(false));
     }, []);
+
+    useEffect(() => () => {
+        if (avatarPreviewUrlRef.current) {
+            URL.revokeObjectURL(avatarPreviewUrlRef.current);
+        }
+    }, []);
+
+    const handleAvatarChange = (event) => {
+        const selectedAvatar = event.target.files?.[0] || null;
+        if (avatarPreviewUrlRef.current) {
+            URL.revokeObjectURL(avatarPreviewUrlRef.current);
+            avatarPreviewUrlRef.current = null;
+        }
+
+        setAvatar(selectedAvatar);
+        if (selectedAvatar) {
+            const previewUrl = URL.createObjectURL(selectedAvatar);
+            avatarPreviewUrlRef.current = previewUrl;
+            setAvatarPreview(previewUrl);
+        } else {
+            setAvatarPreview('');
+        }
+    };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -36,7 +58,7 @@ export default function MyProfilePage() {
         setErrors({});
 
         const formData = new FormData();
-        ['name', 'email', 'phone', 'line_id', 'facebook_contact'].forEach((field) => {
+        ['name', 'email'].forEach((field) => {
             formData.append(field, profile[field] || '');
         });
         if (password) {
@@ -53,10 +75,15 @@ export default function MyProfilePage() {
             setPassword('');
             setPasswordConfirmation('');
             setAvatar(null);
-            setMessage(response.data.message || 'อัปเดตโปรไฟล์เรียบร้อยแล้ว');
+            setAvatarPreview('');
+            if (avatarPreviewUrlRef.current) {
+                URL.revokeObjectURL(avatarPreviewUrlRef.current);
+                avatarPreviewUrlRef.current = null;
+            }
+            setMessage(response.data.message || 'บันทึกเรียบร้อยแล้ว');
         } catch (error) {
             setErrors(error.response?.data?.errors || {});
-            setMessage(error.response?.data?.message || 'บันทึกโปรไฟล์ไม่สำเร็จ');
+            setMessage(error.response?.data?.message || 'บันทึกไม่สำเร็จ กรุณาลองใหม่');
         } finally {
             setSaving(false);
         }
@@ -67,16 +94,19 @@ export default function MyProfilePage() {
     const fieldError = (field) => errors[field]?.[0];
 
     return (
-        <main className="container py-4" style={{ maxWidth: '760px' }}>
-            <h1 className="h3 fw-bold mb-4">โปรไฟล์ของฉัน</h1>
-            <form className="card shadow-sm" onSubmit={handleSubmit}>
+        <main className="container page-surface py-4 py-lg-5" style={{ maxWidth: '860px' }}>
+            <div className="page-heading mb-4">
+                <span className="marketplace-kicker">พื้นที่ส่วนตัว</span>
+                <h1 className="h3 fw-bold mb-0">โปรไฟล์ของฉัน</h1>
+            </div>
+            <form className="card profile-form-card" onSubmit={handleSubmit}>
                 <div className="card-body p-4">
                     {message && <div className={`alert ${Object.keys(errors).length ? 'alert-danger' : 'alert-info'}`} role="status">{message}</div>}
                     <div className="d-flex align-items-center gap-3 mb-4">
                         <img src={profile.avatar_url || 'https://via.placeholder.com/96'} alt="รูปโปรไฟล์" width="88" height="88" className="rounded-circle object-fit-cover border" />
                         <div>
                             <div className="fw-semibold">{profile.name}</div>
-                            <div className="text-secondary small">{profile.role} · {profile.status}</div>
+                            <div className="text-secondary small">{profile.role === 'admin' ? 'ผู้ดูแล' : 'สมาชิก'} · {profile.status === 'banned' ? 'ถูกระงับ' : 'ใช้งาน'}</div>
                         </div>
                     </div>
 
@@ -91,24 +121,15 @@ export default function MyProfilePage() {
                             <input id="profile-email" type="email" className={`form-control ${fieldError('email') ? 'is-invalid' : ''}`} value={profile.email} onChange={(event) => setProfile({ ...profile, email: event.target.value })} required />
                             {fieldError('email') && <div className="invalid-feedback">{fieldError('email')}</div>}
                         </div>
-                        <div className="col-md-6">
-                            <label className="form-label" htmlFor="profile-phone">เบอร์โทรศัพท์</label>
-                            <input id="profile-phone" className="form-control" value={profile.phone || ''} onChange={(event) => setProfile({ ...profile, phone: event.target.value })} maxLength="20" />
-                            {fieldError('phone') && <div className="text-danger small mt-1">{fieldError('phone')}</div>}
-                        </div>
-                        <div className="col-md-6">
-                            <label className="form-label" htmlFor="profile-line">Line ID</label>
-                            <input id="profile-line" className="form-control" value={profile.line_id || ''} onChange={(event) => setProfile({ ...profile, line_id: event.target.value })} maxLength="50" />
-                            {fieldError('line_id') && <div className="text-danger small mt-1">{fieldError('line_id')}</div>}
-                        </div>
-                        <div className="col-12">
-                            <label className="form-label" htmlFor="profile-facebook">Facebook</label>
-                            <input id="profile-facebook" className="form-control" value={profile.facebook_contact || ''} onChange={(event) => setProfile({ ...profile, facebook_contact: event.target.value })} maxLength="255" />
-                            {fieldError('facebook_contact') && <div className="text-danger small mt-1">{fieldError('facebook_contact')}</div>}
-                        </div>
                         <div className="col-12">
                             <label className="form-label" htmlFor="profile-avatar">รูปโปรไฟล์ (JPG/PNG ไม่เกิน 2MB)</label>
-                            <input id="profile-avatar" type="file" accept="image/jpeg,image/png" className={`form-control ${fieldError('avatar') ? 'is-invalid' : ''}`} onChange={(event) => setAvatar(event.target.files?.[0] || null)} />
+                            <input id="profile-avatar" type="file" accept="image/jpeg,image/png" className={`form-control ${fieldError('avatar') ? 'is-invalid' : ''}`} onChange={handleAvatarChange} />
+                            {avatarPreview && (
+                                <div className="mt-3">
+                                    <div className="form-label">ตัวอย่างรูปที่เลือก</div>
+                                    <img src={avatarPreview} alt="ตัวอย่างรูปโปรไฟล์ที่เลือก" width="96" height="96" className="rounded-circle object-fit-cover border" />
+                                </div>
+                            )}
                             {fieldError('avatar') && <div className="invalid-feedback">{fieldError('avatar')}</div>}
                         </div>
                         <div className="col-md-6">

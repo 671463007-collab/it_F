@@ -21,7 +21,7 @@ instance.interceptors.response.use(
     const message = error.response?.data?.message;
     if (
       error.response?.status === 403 &&
-      message === "บัญชีของคุณถูกระงับการใช้งาน" &&
+      message === "บัญชีนี้ถูกระงับการใช้งาน" &&
       !sessionStorage.getItem("banned-session-notified")
     ) {
       sessionStorage.setItem("banned-session-notified", "true");

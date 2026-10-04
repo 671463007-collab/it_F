@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import api from '../api/axios';
+import api from '../../api/axios';
 
 export default function UserProfilePage() {
     const { userId } = useParams();
@@ -15,7 +15,7 @@ export default function UserProfilePage() {
         api.get(`/users/${userId}`)
             .then((response) => setProfile(response.data))
             .catch((error) => {
-                console.error('ไม่สามารถโหลดข้อมูลโปรไฟล์ได้:', error);
+                console.error('โหลดโปรไฟล์ไม่สำเร็จ:', error);
                 setProfile(null);
             })
             .finally(() => setLoading(false));
@@ -40,7 +40,7 @@ export default function UserProfilePage() {
             });
             setReporting(false);
             setReportReason('');
-            alert(response.data.message || 'ส่งรายงานเรียบร้อยแล้ว');
+            alert(response.data.message || 'ส่งรายงานแล้ว ทีมงานจะตรวจสอบให้');
         } catch (error) {
             const validationMessage = Object.values(error.response?.data?.errors || {}).flat()[0];
             setReportError(validationMessage || error.response?.data?.message || 'ส่งรายงานไม่สำเร็จ');
@@ -48,18 +48,15 @@ export default function UserProfilePage() {
     };
 
     if (loading) return <main className="container py-5 text-center">กำลังโหลดโปรไฟล์...</main>;
-    if (!profile) return <main className="container py-5 text-center text-danger">ไม่พบข้อมูลผู้ใช้งานนี้</main>;
+    if (!profile) return <main className="container py-5 text-center text-danger">ไม่พบผู้ใช้นี้</main>;
 
     return (
-        <main className="container py-4 mb-5" style={{ maxWidth: '1000px' }}>
-            <section className="card border-0 shadow-sm mb-4">
+        <main className="container page-surface py-4 py-lg-5 mb-4" style={{ maxWidth: '1000px' }}>
+            <section className="card public-profile-card mb-4">
                 <div className="card-body p-4 d-flex flex-wrap align-items-center gap-4">
                     <img src={profile.avatar_url || 'https://via.placeholder.com/96'} alt={profile.name} className="rounded-circle border" style={{ width: '90px', height: '90px', objectFit: 'cover' }} />
                     <div className="flex-grow-1">
                         <h1 className="h3 fw-bold mb-1">{profile.name}</h1>
-                        {profile.phone && <div className="small text-secondary">โทรศัพท์: {profile.phone}</div>}
-                        {profile.line_id && <div className="small text-secondary">Line: {profile.line_id}</div>}
-                        {profile.facebook_contact && <div className="small text-secondary">Facebook: {profile.facebook_contact}</div>}
                     </div>
                     {isSignedIn && !isSelf && <div className="d-flex flex-wrap gap-2">
                         <Link className="btn btn-primary btn-sm" to={`/messages?user_id=${profile.id}`}>ส่งข้อความ</Link>
@@ -75,7 +72,7 @@ export default function UserProfilePage() {
                 <button className="btn btn-danger btn-sm align-self-start" type="submit">ส่งรายงาน</button>
             </form>}
 
-            <h2 className="h4 fw-bold mb-3">ประกาศแลกเปลี่ยนที่เปิดอยู่</h2>
+            <div className="page-heading mb-3"><h2 className="h4 fw-bold mb-0">ประกาศที่เปิดอยู่</h2></div>
             {profile.exchange_posts?.length ? <div className="row g-3">
                 {profile.exchange_posts.map((post) => <div className="col-md-6" key={post.id}>
                     <article className="card h-100 border-0 shadow-sm">
@@ -87,12 +84,11 @@ export default function UserProfilePage() {
                             <p className="text-secondary">{post.description}</p>
                             {(post.post_type || 'exchange') === 'discussion' && post.gadget_name && <p className="small text-secondary">อุปกรณ์: {post.gadget_name}</p>}
                             {(post.post_type || 'exchange') === 'exchange' && post.looking_for && <p className="small">ต้องการแลกกับ: {post.looking_for}</p>}
-                            {post.looking_for && <p className="small">ต้องการแลกกับ: {post.looking_for}</p>}
                             <Link to={`/posts/${post.id}`} className="btn btn-outline-primary btn-sm">ดูรายละเอียด</Link>
                         </div>
                     </article>
                 </div>)}
-            </div> : <div className="alert alert-light border text-center">ผู้ใช้งานนี้ยังไม่มีประกาศที่เปิดอยู่</div>}
+            </div> : <div className="alert alert-light border text-center">ผู้ใช้นี้ยังไม่มีประกาศที่เปิดอยู่</div>}
         </main>
     );
 }

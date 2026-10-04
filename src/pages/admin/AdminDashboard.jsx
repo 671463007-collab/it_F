@@ -41,23 +41,23 @@ export default function AdminDashboard() {
 
     const metrics = [
         ['ผู้ใช้ทั้งหมด', stats.total_users],
-        ['โพสต์ทั้งหมด', stats.total_posts],
-        ['โพสต์แลกเปลี่ยน', stats.exchange_posts],
-        ['โพสต์รีวิว / พูดคุย', stats.discussion_posts],
-        ['คอมเมนต์ทั้งหมด', stats.total_comments],
+        ['ประกาศทั้งหมด', stats.total_posts],
+        ['ประกาศแลกเปลี่ยน', stats.exchange_posts],
+        ['รีวิว / พูดคุย', stats.discussion_posts],
+        ['ความคิดเห็นทั้งหมด', stats.total_comments],
         ['รีวิวอุปกรณ์ทั้งหมด', stats.total_reviews],
     ];
 
     return (
         <main className="container-fluid px-0">
             <h1 className="h3 fw-bold mb-1">แดชบอร์ดผู้ดูแล</h1>
-            <p className="text-secondary mb-4">สรุปสถานะระบบแลกเปลี่ยนอุปกรณ์ไอที</p>
+            <p className="text-secondary mb-4">ภาพรวมชุมชนแลกเปลี่ยนอุปกรณ์ไอที</p>
 
-            <section className="mb-4" aria-label="โพสต์รอตรวจสอบ">
+            <section className="mb-4" aria-label="ประกาศรอตรวจสอบ">
                 <div className="card border-warning border-2 bg-warning-subtle">
                     <div className="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
-                        <div><div className="text-uppercase small fw-bold text-warning-emphasis">ต้องดำเนินการ</div><h2 className="h5 mb-0">โพสต์รอตรวจสอบ</h2></div>
-                        <div className="d-flex align-items-center gap-3"><div className="display-5 fw-bold text-warning-emphasis">{stats.pending_posts}</div><Link className="btn btn-warning" to="/admin/posts?status=pending">ตรวจสอบโพสต์</Link></div>
+                        <div><div className="text-uppercase small fw-bold text-warning-emphasis">รอตรวจสอบ</div><h2 className="h5 mb-0">ประกาศรอตรวจสอบ</h2></div>
+                        <div className="d-flex align-items-center gap-3"><div className="display-5 fw-bold text-warning-emphasis">{stats.pending_posts}</div><Link className="btn btn-warning" to="/admin/posts?status=pending">ดูประกาศ</Link></div>
                     </div>
                 </div>
             </section>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import api from "../api/axios";
+import api from "../../api/axios";
 
 function Home() {
   const [posts, setPosts] = useState([]);
@@ -56,19 +56,28 @@ function Home() {
   // ฟังก์ชันดึง URL รูปภาพจาก Accessor image_url ที่อยู่ใน PostImage.php
   const getImageUrl = (images) => {
     if (!Array.isArray(images) || images.length === 0) {
-      return "https://placehold.co/300x200?text=No+Image";
+      return "https://placehold.co/300x200?text=%E0%B9%84%E0%B8%A1%E0%B9%88%E0%B8%A1%E0%B8%B5%E0%B8%A3%E0%B8%B9%E0%B8%9B%E0%B8%A0%E0%B8%B2%E0%B8%9E";
     }
-    return images[0]?.image_url || "https://placehold.co/300x200?text=No+Image";
+    return images[0]?.image_url || "https://placehold.co/300x200?text=%E0%B9%84%E0%B8%A1%E0%B9%88%E0%B8%A1%E0%B8%B5%E0%B8%A3%E0%B8%B9%E0%B8%9B%E0%B8%A0%E0%B8%B2%E0%B8%9E";
   };
 
   return (
-    <div className="container mt-4 mb-5">
-      <h1 className="h3 mb-4 fw-bold">โพสต์อุปกรณ์ไอที</h1>
+    <div className="container home-page py-4 py-lg-5 mb-4">
+      <section className="marketplace-intro mb-4 mb-lg-5">
+        <div className="marketplace-kicker">ชุมชนคนรักอุปกรณ์ไอที</div>
+        <div className="d-flex flex-column flex-lg-row align-items-lg-end justify-content-between gap-3">
+          <div>
+            <h1 className="display-6 fw-bold mb-2">ของที่ไม่ได้ใช้ อาจเป็นของที่ใครกำลังหา</h1>
+            <p className="mb-0 text-secondary">เลือกดูประกาศ แลกเปลี่ยนอุปกรณ์ หรือแชร์ประสบการณ์กับชุมชน</p>
+          </div>
+          <span className="marketplace-stamp" aria-hidden="true">แลก • แชร์ • ส่งต่อ</span>
+        </div>
+      </section>
 
-      <ul className="nav nav-tabs mb-4" aria-label="ประเภทโพสต์">
+      <ul className="nav nav-tabs marketplace-tabs mb-4" aria-label="ประเภทประกาศ">
         {[
           ["all", "ทั้งหมด"],
-          ["exchange", "แลกเปลี่ยนอุปกรณ์"],
+          ["exchange", "แลกเปลี่ยน"],
           ["discussion", "รีวิว / พูดคุย"],
         ].map(([type, label]) => (
           <li className="nav-item" key={type}>
@@ -80,12 +89,12 @@ function Home() {
       </ul>
 
       {/* ช่องค้นหาและคัดกรอง */}
-      <div className="row mb-4">
+      <div className="row g-2 g-md-3 mb-4 marketplace-search">
         <div className="col-md-8 mb-3 mb-md-0">
           <input
             type="text"
             className="form-control"
-            placeholder={postType === "discussion" ? "ค้นหาหัวข้อ รายละเอียด หรือชื่ออุปกรณ์..." : "ค้นหาหัวข้อ รายละเอียด หรือสิ่งที่ต้องการแลก..."}
+            placeholder="ค้นหาประกาศ อุปกรณ์ หรือสิ่งที่ต้องการแลก..."
             value={keyword}
             onChange={(e) => {
               setKeyword(e.target.value);
@@ -102,7 +111,7 @@ function Home() {
               setCurrentPage(1);
             }}
           >
-            <option value="">-- ทุกหมวดหมู่ --</option>
+            <option value="">ทุกหมวดหมู่</option>
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
@@ -115,7 +124,7 @@ function Home() {
       {loading ? (
         <div className="text-center py-5">
           <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
+            <span className="visually-hidden">กำลังโหลด...</span>
           </div>
         </div>
       ) : (
@@ -123,23 +132,23 @@ function Home() {
           {posts.length === 0 ? (
             <div className="alert alert-light text-center py-5 border">
               <p className="text-muted mb-0">
-                ยังไม่มีรายการอุปกรณ์ หรือไม่พบข้อมูลที่ตรงตามเงื่อนไข
+                ยังไม่มีประกาศ หรือไม่พบรายการที่ตรงกับการค้นหา
               </p>
             </div>
           ) : (
-            <div className="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
+            <div className="row row-cols-1 row-cols-md-2 row-cols-lg-5 g-4">
               {posts.map((post) => (
                 <div className="col" key={post.id}>
-                  <div className="card h-100 shadow-sm">
+                  <div className="card h-100 marketplace-card">
                     <img
                       src={getImageUrl(post.images)}
                       className="card-img-top"
-                      alt={post.title || "อุปกรณ์"}
+                      alt={post.title || "ไม่มีรูปภาพ"}
                       style={{ height: "180px", objectFit: "cover" }}
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src =
-                          "https://placehold.co/300x200?text=No+Image";
+                          "https://placehold.co/300x200?text=%E0%B9%84%E0%B8%A1%E0%B9%88%E0%B8%A1%E0%B8%B5%E0%B8%A3%E0%B8%B9%E0%B8%9B%E0%B8%A0%E0%B8%B2%E0%B8%9E";
                       }}
                     />
                     <div className="card-body d-flex flex-column">
@@ -161,13 +170,13 @@ function Home() {
                       {post.post_type === "discussion" && post.gadget_name && <p className="card-text text-muted small mb-2">อุปกรณ์: {post.gadget_name}</p>}
                       {post.post_type === "exchange" && post.looking_for && (
                         <div className="mb-3">
-                          <span className="badge bg-info text-dark text-wrap text-start">
-                            สนใจแลก: {post.looking_for}
+                          <span className="badge exchange-want-badge text-wrap text-start">
+                            ต้องการแลกกับ: {post.looking_for}
                           </span>
                         </div>
                       )}
                       <div className="small text-secondary mb-3">
-                        โดย {post.user?.name || "ผู้ใช้"} · {post.likes_count || 0} ถูกใจ · {post.comments_count || 0} ความคิดเห็น
+                        ผู้ลงประกาศ: {post.user?.name || "ผู้ใช้"} · {post.likes_count || 0} ถูกใจ · {post.comments_count || 0} ความคิดเห็น
                       </div>
                       <Link
                         to={`/posts/${post.id}`}

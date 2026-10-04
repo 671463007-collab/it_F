@@ -65,7 +65,7 @@ export default function ManageCategories() {
     return (
         <section className="container-fluid px-0">
             <h1 className="h3 fw-bold mb-1">จัดการหมวดหมู่</h1>
-            <p className="text-secondary mb-4">เพิ่ม แก้ไข เปิด/ปิด และลบหมวดหมู่</p>
+            <p className="text-secondary mb-4">เพิ่ม แก้ไข เปิด/ปิด หรือลบหมวดหมู่</p>
             {errorMessage && <div className="alert alert-danger" role="alert">{errorMessage}</div>}
             {editingCategory && <div className="alert alert-primary" role="status">กำลังแก้ไขหมวดหมู่: {editingCategory.name}</div>}
             <form className="row g-2 mb-4" onSubmit={handleSubmit}>
