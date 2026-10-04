@@ -15,6 +15,7 @@ export default function MyPostsPage() {
     const [editingPostId, setEditingPostId] = useState(null);
     const [draft, setDraft] = useState(null);
     const [newImages, setNewImages] = useState([]);
+    const [postTypeFilter, setPostTypeFilter] = useState('all');
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
 
@@ -50,14 +51,20 @@ export default function MyPostsPage() {
         if (!['open', 'closed'].includes(post.status)) return;
         const status = post.status === 'open' ? 'closed' : 'open';
         try {
-            await api.post(`/exchange-posts/${post.id}`, {
+            const payload = {
+                post_type: post.post_type || 'exchange',
                 category_id: post.category_id,
                 title: post.title,
                 description: post.description,
-                condition_percent: post.condition_percent,
-                looking_for: post.looking_for,
                 status,
-            });
+            };
+            if (payload.post_type === 'exchange') {
+                payload.condition_percent = post.condition_percent;
+                payload.looking_for = post.looking_for;
+            } else {
+                payload.gadget_name = post.gadget_name;
+            }
+            await api.post(`/exchange-posts/${post.id}`, payload);
             await fetchMyPosts();
         } catch (error) {
             alert(error.response?.data?.message || 'ไม่สามารถเปลี่ยนสถานะได้');
@@ -66,13 +73,20 @@ export default function MyPostsPage() {
 
     const startEditing = (post) => {
         setEditingPostId(post.id);
-        setDraft({
+        const postType = post.post_type || 'exchange';
+        const postDraft = {
+            post_type: postType,
             category_id: String(post.category_id),
             title: post.title,
             description: post.description,
-            condition_percent: post.condition_percent,
-            looking_for: post.looking_for || '',
-        });
+        };
+        if (postType === 'exchange') {
+            postDraft.condition_percent = post.condition_percent;
+            postDraft.looking_for = post.looking_for || '';
+        } else {
+            postDraft.gadget_name = post.gadget_name || '';
+        }
+        setDraft(postDraft);
         setNewImages([]);
     };
 
@@ -101,27 +115,33 @@ export default function MyPostsPage() {
     return (
         <main className="container py-4" style={{ maxWidth: '1000px' }}>
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                <h1 className="h3 fw-bold mb-0">โพสต์ขอแลกเปลี่ยนของฉัน</h1>
+                <h1 className="h3 fw-bold mb-0">โพสต์ของฉัน</h1>
                 <Link to="/create-post" className="btn btn-primary">+ สร้างโพสต์ใหม่</Link>
             </div>
-            {posts.length === 0 ? (
+            <ul className="nav nav-tabs mb-4">
+                {[["all", "ทั้งหมด"], ["exchange", "แลกเปลี่ยน"], ["discussion", "รีวิว / พูดคุย"]].map(([type, label]) => (
+                    <li className="nav-item" key={type}><button className={`nav-link ${postTypeFilter === type ? 'active' : ''}`} onClick={() => setPostTypeFilter(type)}>{label}</button></li>
+                ))}
+            </ul>
+            {posts.filter((post) => postTypeFilter === 'all' || (post.post_type || 'exchange') === postTypeFilter).length === 0 ? (
                 <div className="alert alert-light border text-center">คุณยังไม่มีประกาศขอแลกเปลี่ยนสินค้า</div>
             ) : (
                 <div className="d-flex flex-column gap-3">
-                    {posts.map((post) => (
+                    {posts.filter((post) => postTypeFilter === 'all' || (post.post_type || 'exchange') === postTypeFilter).map((post) => (
                         <article key={post.id} className="card border-0 shadow-sm">
                             <div className="card-body">
                                 <div className="d-flex flex-wrap justify-content-between gap-3">
                                     <div className="flex-grow-1">
                                         <div className="d-flex align-items-center gap-2 mb-2">
+                                            <span className={`badge ${(post.post_type || 'exchange') === 'discussion' ? 'text-bg-info' : 'text-bg-primary'}`}>{(post.post_type || 'exchange') === 'discussion' ? 'รีวิว / พูดคุย' : 'แลกเปลี่ยน'}</span>
                                             <span className={`badge ${post.status === 'open' ? 'text-bg-success' : post.status === 'pending' ? 'text-bg-warning' : post.status === 'hidden' ? 'text-bg-danger' : 'text-bg-secondary'}`}>
                                                 {statusLabels[post.status] || post.status}
                                             </span>
-                                            <span className="small text-secondary">สภาพ {post.condition_percent}%</span>
+                                            {(post.post_type || 'exchange') === 'exchange' ? <span className="small text-secondary">สภาพ {post.condition_percent}%</span> : post.gadget_name && <span className="small text-secondary">{post.gadget_name}</span>}
                                         </div>
                                         <h2 className="h5 fw-bold">{post.title}</h2>
                                         <p className="text-secondary mb-2">{post.description}</p>
-                                        {post.looking_for && <div className="small">ต้องการแลกกับ: {post.looking_for}</div>}
+                                        {(post.post_type || 'exchange') === 'exchange' && post.looking_for && <div className="small">ต้องการแลกกับ: {post.looking_for}</div>}
                                     </div>
                                     <div className="d-flex align-items-start gap-2">
                                         {['open', 'closed'].includes(post.status) && (
@@ -145,18 +165,22 @@ export default function MyPostsPage() {
                                             <label className="form-label">หัวข้อ</label>
                                             <input className="form-control" value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} maxLength="255" required />
                                         </div>
+                                        {draft.post_type === 'discussion' && <div className="col-md-6">
+                                            <label className="form-label">ชื่ออุปกรณ์ (ไม่บังคับ)</label>
+                                            <input className="form-control" value={draft.gadget_name} onChange={(event) => setDraft({ ...draft, gadget_name: event.target.value })} maxLength="255" />
+                                        </div>}
                                         <div className="col-12">
                                             <label className="form-label">รายละเอียด</label>
                                             <textarea className="form-control" value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} required />
                                         </div>
-                                        <div className="col-md-6">
+                                        {draft.post_type === 'exchange' && <div className="col-md-6">
                                             <label className="form-label">สภาพสินค้า: {draft.condition_percent}%</label>
                                             <input className="form-range" type="range" min="0" max="100" value={draft.condition_percent} onChange={(event) => setDraft({ ...draft, condition_percent: event.target.value })} />
-                                        </div>
-                                        <div className="col-md-6">
+                                        </div>}
+                                        {draft.post_type === 'exchange' && <div className="col-md-6">
                                             <label className="form-label">สิ่งที่ต้องการแลก</label>
                                             <input className="form-control" value={draft.looking_for} onChange={(event) => setDraft({ ...draft, looking_for: event.target.value })} />
-                                        </div>
+                                        </div>}
                                         <div className="col-12">
                                             <label className="form-label">เพิ่มรูปภาพ (ไม่เกิน 2MB ต่อรูป)</label>
                                             <input className="form-control" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => setNewImages(event.target.files || [])} />

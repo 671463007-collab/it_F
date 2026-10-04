@@ -86,7 +86,7 @@ function Login() {
       </form>
 
       <p className="text-center mt-3">
-        <>ยังไม่มีบัญชี? <Link to="/register">สมัครสมาชิก</Link><br /><Link to="/admin/login">เข้าสู่ระบบผู้ดูแล</Link></>
+        ยังไม่มีบัญชี? <Link to="/register">สมัครสมาชิก</Link>
       </p>
     </div>
   );

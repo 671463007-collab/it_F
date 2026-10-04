@@ -6,8 +6,10 @@ function CreatePost() {
   const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
 
+  const [postType, setPostType] = useState("exchange");
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [gadgetName, setGadgetName] = useState("");
   const [conditionPercent, setConditionPercent] = useState(100);
   const [lookingFor, setLookingFor] = useState("");
   const [description, setDescription] = useState("");
@@ -32,9 +34,15 @@ function CreatePost() {
   useEffect(() => () => previewUrls.forEach((url) => URL.revokeObjectURL(url)), [previewUrls]);
 
   const handleImageChange = (e) => {
-    const files = Array.from(e.target.files || []);
+    const files = Array.from(e.target.files || []).filter((file) => {
+      const validType = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+      return validType && file.size <= 2 * 1024 * 1024;
+    });
     setImageFiles(files);
     setPreviewUrls(files.map((file) => URL.createObjectURL(file)));
+    if (files.length !== e.target.files.length) {
+      setErrorMsg("รูปภาพต้องเป็น JPG, PNG หรือ WEBP และมีขนาดไม่เกิน 2MB ต่อรูป");
+    }
   };
 
   // ส่งฟอร์ม
@@ -50,11 +58,16 @@ function CreatePost() {
     setLoading(true);
 
     const formData = new FormData();
+    formData.append("post_type", postType);
     formData.append("title", title);
     formData.append("category_id", categoryId);
-    formData.append("condition_percent", conditionPercent);
-    formData.append("looking_for", lookingFor);
     formData.append("description", description);
+    if (postType === "exchange") {
+      formData.append("condition_percent", conditionPercent);
+      formData.append("looking_for", lookingFor);
+    } else {
+      formData.append("gadget_name", gadgetName);
+    }
 
     imageFiles.forEach((file) => formData.append("images[]", file));
 
@@ -82,7 +95,7 @@ function CreatePost() {
     <div className="container mt-4 mb-5" style={{ maxWidth: "700px" }}>
       <div className="card shadow-sm">
         <div className="card-header bg-primary text-white">
-          <h4 className="mb-0 fs-5 fw-bold">ลงประกาศแลกเปลี่ยนอุปกรณ์</h4>
+          <h4 className="mb-0 fs-5 fw-bold">สร้างโพสต์</h4>
         </div>
         <div className="card-body">
           {errorMsg && (
@@ -92,10 +105,18 @@ function CreatePost() {
           )}
 
           <form onSubmit={handleSubmit}>
+            <fieldset className="mb-4">
+              <legend className="form-label fw-bold">ประเภทโพสต์</legend>
+              <div className="btn-group" role="group" aria-label="ประเภทโพสต์">
+                <input className="btn-check" type="radio" name="postType" id="post-type-exchange" checked={postType === "exchange"} onChange={() => setPostType("exchange")} />
+                <label className="btn btn-outline-primary" htmlFor="post-type-exchange">แลกเปลี่ยนอุปกรณ์</label>
+                <input className="btn-check" type="radio" name="postType" id="post-type-discussion" checked={postType === "discussion"} onChange={() => setPostType("discussion")} />
+                <label className="btn btn-outline-primary" htmlFor="post-type-discussion">รีวิว / พูดคุย</label>
+              </div>
+            </fieldset>
+
             <div className="mb-3">
-              <label className="form-label fw-bold">
-                หัวข้อประกาศ <span className="text-danger">*</span>
-              </label>
+              <label className="form-label fw-bold">หัวข้อ <span className="text-danger">*</span></label>
               <input
                 type="text"
                 className="form-control"
@@ -126,7 +147,7 @@ function CreatePost() {
                 </select>
               </div>
 
-              <div className="col-md-6 mb-3">
+              {postType === "exchange" ? <div className="col-md-6 mb-3">
                 <label className="form-label fw-bold">
                   สภาพสินค้า (%) <span className="text-danger">*</span>
                 </label>
@@ -139,10 +160,13 @@ function CreatePost() {
                   onChange={(e) => setConditionPercent(e.target.value)}
                   required
                 />
-              </div>
+              </div> : <div className="col-md-6 mb-3">
+                <label className="form-label fw-bold">ชื่ออุปกรณ์ (ไม่บังคับ)</label>
+                <input type="text" className="form-control" maxLength="255" value={gadgetName} onChange={(e) => setGadgetName(e.target.value)} placeholder="เช่น iPhone 15, AirPods Pro 2" />
+              </div>}
             </div>
 
-            <div className="mb-3">
+            {postType === "exchange" && <div className="mb-3">
               <label className="form-label fw-bold">
                 สิ่งของที่สนใจแลกเปลี่ยน (Looking For)
               </label>
@@ -153,7 +177,7 @@ function CreatePost() {
                 value={lookingFor}
                 onChange={(e) => setLookingFor(e.target.value)}
               />
-            </div>
+            </div>}
 
             <div className="mb-3">
               <label className="form-label fw-bold">

@@ -16,6 +16,8 @@ export default function PostDetail() {
     const [editingCommentId, setEditingCommentId] = useState(null);
     const [editCommentText, setEditCommentText] = useState('');
     const [editCommentRating, setEditCommentRating] = useState('');
+    const [replyingToId, setReplyingToId] = useState(null);
+    const [replyText, setReplyText] = useState('');
     const [reporting, setReporting] = useState(false);
     const [reportReason, setReportReason] = useState('');
     const [reportError, setReportError] = useState('');
@@ -66,21 +68,36 @@ export default function PostDetail() {
         }
     };
 
-    const handleCommentSubmit = async (event) => {
+    const handleCommentSubmit = async (event, parentId = null) => {
         event.preventDefault();
+        const content = parentId ? replyText : commentText;
+        if (!content.trim()) return;
         if (!token) {
             navigate('/login');
             return;
         }
         setSubmitting(true);
         try {
-            await api.post(`/exchange-posts/${id}/comments`, {
-                content: commentText,
-                rating: rating ? Number(rating) : null,
-            });
-            setCommentText('');
-            setRating('');
-            await fetchPostDetail();
+            const payload = { content: content.trim() };
+            if (post.post_type === 'exchange') payload.rating = rating ? Number(rating) : null;
+            if (parentId) payload.parent_id = parentId;
+            const response = await api.post(`/exchange-posts/${id}/comments`, payload);
+            const savedComment = { ...response.data.comment, replies: [] };
+            setPost((current) => ({
+                ...current,
+                comments: parentId
+                    ? current.comments.map((comment) => comment.id === parentId
+                        ? { ...comment, replies: [...(comment.replies || []), savedComment] }
+                        : comment)
+                    : [savedComment, ...(current.comments || [])],
+            }));
+            if (parentId) {
+                setReplyText('');
+                setReplyingToId(null);
+            } else {
+                setCommentText('');
+                setRating('');
+            }
         } catch (error) {
             const validationMessage = Object.values(error.response?.data?.errors || {}).flat()[0];
             alert(validationMessage || error.response?.data?.message || 'ไม่สามารถส่งความคิดเห็นได้');
@@ -92,12 +109,22 @@ export default function PostDetail() {
     const handleCommentUpdate = async (event, commentId) => {
         event.preventDefault();
         try {
-            await api.put(`/comments/${commentId}`, {
-                content: editCommentText,
-                rating: editCommentRating ? Number(editCommentRating) : null,
-            });
+            const payload = { content: editCommentText };
+            if (post.post_type === 'exchange') payload.rating = editCommentRating ? Number(editCommentRating) : null;
+            const response = await api.put(`/comments/${commentId}`, payload);
+            const updatedComment = response.data.comment;
+            setPost((current) => ({
+                ...current,
+                comments: current.comments.map((comment) => comment.id === commentId
+                    ? { ...comment, ...updatedComment }
+                    : {
+                        ...comment,
+                        replies: (comment.replies || []).map((reply) => reply.id === commentId
+                            ? { ...reply, ...updatedComment }
+                            : reply),
+                    }),
+            }));
             setEditingCommentId(null);
-            await fetchPostDetail();
         } catch (error) {
             const validationMessage = Object.values(error.response?.data?.errors || {}).flat()[0];
             alert(validationMessage || error.response?.data?.message || 'ไม่สามารถแก้ไขความคิดเห็นได้');
@@ -108,7 +135,15 @@ export default function PostDetail() {
         if (!window.confirm('ต้องการลบความคิดเห็นนี้หรือไม่?')) return;
         try {
             await api.delete(`/comments/${commentId}`);
-            setPost((current) => ({ ...current, comments: current.comments.filter((comment) => comment.id !== commentId) }));
+            setPost((current) => ({
+                ...current,
+                comments: current.comments
+                    .filter((comment) => comment.id !== commentId)
+                    .map((comment) => ({
+                        ...comment,
+                        replies: (comment.replies || []).filter((reply) => reply.id !== commentId),
+                    })),
+            }));
         } catch (error) {
             alert(error.response?.data?.message || 'ไม่สามารถลบความคิดเห็นได้');
         }
@@ -146,6 +181,40 @@ export default function PostDetail() {
     const images = post.images || [];
     const isOwner = Number(user?.id) === Number(post.user_id);
 
+    const renderComment = (comment, isReply = false) => (
+        <article key={comment.id} className={`border rounded p-3 ${isReply ? 'bg-light ms-3 ms-md-4' : ''}`}>
+            <div className="d-flex align-items-start gap-2">
+                {comment.user?.avatar_url && <img src={comment.user.avatar_url} alt="" className="rounded-circle" width="36" height="36" />}
+                <div className="flex-grow-1">
+                    <div className="d-flex flex-wrap justify-content-between gap-2">
+                        <strong>{comment.user?.name || 'ผู้ใช้งาน'}</strong>
+                        <time className="small text-secondary">{new Date(comment.created_at).toLocaleString('th-TH')}</time>
+                    </div>
+                    {post.post_type === 'exchange' && comment.rating && <div className="text-warning" aria-label={`${comment.rating} จาก 5 ดาว`}>{'★'.repeat(comment.rating)}{'☆'.repeat(5 - comment.rating)}</div>}
+                    <p className="mb-2 mt-2" style={{ whiteSpace: 'pre-wrap' }}>{comment.content}</p>
+                    <div className="d-flex gap-3">
+                        {!isReply && token && <button className="btn btn-link btn-sm p-0" onClick={() => setReplyingToId(replyingToId === comment.id ? null : comment.id)}>ตอบกลับ</button>}
+                        {Number(user?.id) === Number(comment.user_id) && <>
+                            <button className="btn btn-link btn-sm p-0" onClick={() => { setEditingCommentId(comment.id); setEditCommentText(comment.content); setEditCommentRating(comment.rating ? String(comment.rating) : ''); }}>แก้ไข</button>
+                            <button className="btn btn-link btn-sm text-danger p-0" onClick={() => handleCommentDelete(comment.id)}>ลบ</button>
+                        </>}
+                    </div>
+                    {editingCommentId === comment.id && <form className="mt-3" onSubmit={(event) => handleCommentUpdate(event, comment.id)}>
+                        <textarea className="form-control mb-2" maxLength="1000" value={editCommentText} onChange={(event) => setEditCommentText(event.target.value)} required />
+                        <div className="d-flex flex-wrap gap-2">
+                            {post.post_type === 'exchange' && <select className="form-select" style={{ maxWidth: '180px' }} value={editCommentRating} onChange={(event) => setEditCommentRating(event.target.value)}>
+                                <option value="">ไม่ให้คะแนน</option>
+                                {[5, 4, 3, 2, 1].map((score) => <option key={score} value={score}>{score} ดาว</option>)}
+                            </select>}
+                            <button className="btn btn-primary btn-sm" type="submit">บันทึก</button>
+                            <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setEditingCommentId(null)}>ยกเลิก</button>
+                        </div>
+                    </form>}
+                </div>
+            </div>
+        </article>
+    );
+
     return (
         <main className="bg-light min-vh-100 py-4">
             <div className="container" style={{ maxWidth: '1000px' }}>
@@ -170,24 +239,25 @@ export default function PostDetail() {
                             </div>
                             <div className="col-md-7 d-flex flex-column">
                                 <div className="d-flex justify-content-between align-items-center gap-2 mb-2">
-                                    <span className="badge text-bg-success">สภาพ {post.condition_percent}%</span>
+                                    {post.post_type === 'exchange' && <span className="badge text-bg-success">สภาพ {post.condition_percent}%</span>}
                                     <button type="button" className={`btn btn-sm ${post.is_liked ? 'btn-danger' : 'btn-outline-danger'}`} onClick={handleToggleLike} disabled={liking}>
                                         {liking ? 'กำลังบันทึก...' : `ถูกใจ (${post.likes_count || 0})`}
                                     </button>
                                 </div>
                                 <h1 className="h3 fw-bold">{post.title}</h1>
                                 <p className="small text-secondary mb-2">หมวดหมู่: {post.category?.name || 'ไม่ระบุหมวดหมู่'}</p>
+                                {post.post_type === 'discussion' && post.gadget_name && <p className="small text-secondary">อุปกรณ์: {post.gadget_name}</p>}
                                 <p className="text-secondary" style={{ whiteSpace: 'pre-line' }}>{post.description}</p>
-                                {post.looking_for && <p><strong>สิ่งที่ต้องการแลก:</strong> {post.looking_for}</p>}
+                                {post.post_type === 'exchange' && post.looking_for && <p><strong>สิ่งที่ต้องการแลก:</strong> {post.looking_for}</p>}
                                 <div className="mt-auto pt-3 border-top small text-secondary">
                                     ผู้โพสต์: <Link to={`/users/${post.user_id}`}>{post.user?.name || 'ผู้ใช้งาน'}</Link>
                                     <span className="ms-3">{new Date(post.created_at).toLocaleDateString('th-TH')}</span>
                                 </div>
-                                {token && !isOwner && <div className="d-flex flex-wrap gap-2 mt-3">
+                                {post.post_type === 'exchange' && token && !isOwner && <div className="d-flex flex-wrap gap-2 mt-3">
                                     <Link className="btn btn-primary btn-sm" to={`/messages?user_id=${post.user_id}&exchange_post_id=${post.id}`}>ส่งข้อความเกี่ยวกับประกาศนี้</Link>
                                     <button className="btn btn-outline-danger btn-sm" onClick={() => setReporting((current) => !current)}>{reporting ? 'ยกเลิกรายงาน' : 'รายงานโพสต์'}</button>
                                 </div>}
-                                {reporting && <form className="mt-3" onSubmit={handleReport}>
+                                {post.post_type === 'exchange' && reporting && <form className="mt-3" onSubmit={handleReport}>
                                     <label className="form-label" htmlFor="post-report-reason">เหตุผลที่รายงาน</label>
                                     <textarea id="post-report-reason" className="form-control mb-2" value={reportReason} onChange={(event) => setReportReason(event.target.value)} required />
                                     {reportError && <div className="text-danger small mb-2">{reportError}</div>}
@@ -205,38 +275,28 @@ export default function PostDetail() {
                             <label className="form-label" htmlFor="comment-content">แสดงความคิดเห็น</label>
                             <textarea id="comment-content" className="form-control mb-2" rows="3" maxLength="1000" value={commentText} onChange={(event) => setCommentText(event.target.value)} required />
                             <div className="d-flex flex-wrap justify-content-between gap-2">
-                                <select className="form-select" style={{ maxWidth: '220px' }} value={rating} onChange={(event) => setRating(event.target.value)}>
+                                {post.post_type === 'exchange' && <select className="form-select" style={{ maxWidth: '220px' }} value={rating} onChange={(event) => setRating(event.target.value)}>
                                     <option value="">ไม่ให้คะแนน</option>
                                     {[5, 4, 3, 2, 1].map((score) => <option key={score} value={score}>{score} ดาว</option>)}
-                                </select>
+                                </select>}
                                 <button className="btn btn-primary" type="submit" disabled={submitting}>{submitting ? 'กำลังส่ง...' : 'ส่งความคิดเห็น'}</button>
                             </div>
                         </form> : <div className="alert alert-light text-center">กรุณา <Link to="/login">เข้าสู่ระบบ</Link> เพื่อแสดงความคิดเห็น</div>}
 
                         {post.comments?.length ? <div className="d-flex flex-column gap-3">
-                            {post.comments.map((comment) => <article key={comment.id} className="border rounded p-3">
-                                <div className="d-flex justify-content-between gap-3">
-                                    <strong>{comment.user?.name || 'ผู้ใช้งาน'}</strong>
-                                    <time className="small text-secondary">{new Date(comment.created_at).toLocaleString('th-TH')}</time>
-                                </div>
-                                {comment.rating && <div className="text-warning" aria-label={`${comment.rating} จาก 5 ดาว`}>{'★'.repeat(comment.rating)}{'☆'.repeat(5 - comment.rating)}</div>}
-                                <p className="mb-2 mt-2" style={{ whiteSpace: 'pre-wrap' }}>{comment.content}</p>
-                                {Number(user?.id) === Number(comment.user_id) && <div className="d-flex gap-2">
-                                    <button className="btn btn-sm btn-outline-primary" onClick={() => { setEditingCommentId(comment.id); setEditCommentText(comment.content); setEditCommentRating(comment.rating ? String(comment.rating) : ''); }}>แก้ไข</button>
-                                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleCommentDelete(comment.id)}>ลบ</button>
-                                </div>}
-                                {editingCommentId === comment.id && <form className="mt-3" onSubmit={(event) => handleCommentUpdate(event, comment.id)}>
-                                    <textarea className="form-control mb-2" maxLength="1000" value={editCommentText} onChange={(event) => setEditCommentText(event.target.value)} required />
-                                    <div className="d-flex gap-2">
-                                        <select className="form-select" style={{ maxWidth: '180px' }} value={editCommentRating} onChange={(event) => setEditCommentRating(event.target.value)}>
-                                            <option value="">ไม่ให้คะแนน</option>
-                                            {[5, 4, 3, 2, 1].map((score) => <option key={score} value={score}>{score} ดาว</option>)}
-                                        </select>
-                                        <button className="btn btn-primary btn-sm" type="submit">บันทึก</button>
-                                        <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setEditingCommentId(null)}>ยกเลิก</button>
+                            {post.comments.map((comment) => <div key={comment.id}>
+                                {renderComment(comment)}
+                                {replyingToId === comment.id && token && <form className="mt-2 ms-3 ms-md-4" onSubmit={(event) => handleCommentSubmit(event, comment.id)}>
+                                    <label className="form-label" htmlFor={`reply-${comment.id}`}>ตอบกลับ {comment.user?.name || 'ความคิดเห็น'}</label>
+                                    <div className="input-group">
+                                        <input id={`reply-${comment.id}`} className="form-control" value={replyText} onChange={(event) => setReplyText(event.target.value)} maxLength="1000" required />
+                                        <button className="btn btn-outline-primary" type="submit">ส่ง</button>
                                     </div>
                                 </form>}
-                            </article>)}
+                                {comment.replies?.length > 0 && <div className="d-flex flex-column gap-2 mt-2 border-start ps-2 ps-md-3">
+                                    {comment.replies.map((reply) => renderComment(reply, true))}
+                                </div>}
+                            </div>)}
                         </div> : <p className="text-center text-secondary py-4 mb-0">ยังไม่มีความคิดเห็น</p>}
                     </div>
                 </section>

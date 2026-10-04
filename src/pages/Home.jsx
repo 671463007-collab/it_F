@@ -9,6 +9,7 @@ function Home() {
 
   const [keyword, setKeyword] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [postType, setPostType] = useState("all");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
@@ -35,6 +36,7 @@ function Home() {
         params: {
           keyword: keyword,
           category_id: categoryId,
+          post_type: postType === "all" ? undefined : postType,
           page: currentPage,
         },
       })
@@ -49,7 +51,7 @@ function Home() {
         setPosts([]);
       })
       .finally(() => setLoading(false));
-  }, [keyword, categoryId, currentPage]);
+  }, [keyword, categoryId, postType, currentPage]);
 
   // ฟังก์ชันดึง URL รูปภาพจาก Accessor image_url ที่อยู่ใน PostImage.php
   const getImageUrl = (images) => {
@@ -61,7 +63,21 @@ function Home() {
 
   return (
     <div className="container mt-4 mb-5">
-      <h2 className="mb-4 fw-bold">รายการแลกเปลี่ยนอุปกรณ์ไอที</h2>
+      <h1 className="h3 mb-4 fw-bold">โพสต์อุปกรณ์ไอที</h1>
+
+      <ul className="nav nav-tabs mb-4" aria-label="ประเภทโพสต์">
+        {[
+          ["all", "ทั้งหมด"],
+          ["exchange", "แลกเปลี่ยนอุปกรณ์"],
+          ["discussion", "รีวิว / พูดคุย"],
+        ].map(([type, label]) => (
+          <li className="nav-item" key={type}>
+            <button className={`nav-link ${postType === type ? "active" : ""}`} onClick={() => { setPostType(type); setCurrentPage(1); }}>
+              {label}
+            </button>
+          </li>
+        ))}
+      </ul>
 
       {/* ช่องค้นหาและคัดกรอง */}
       <div className="row mb-4">
@@ -69,7 +85,7 @@ function Home() {
           <input
             type="text"
             className="form-control"
-            placeholder="ค้นหาด้วยชื่อ รายละเอียด หรือสิ่งที่ต้องการแลก..."
+            placeholder={postType === "discussion" ? "ค้นหาหัวข้อ รายละเอียด หรือชื่ออุปกรณ์..." : "ค้นหาหัวข้อ รายละเอียด หรือสิ่งที่ต้องการแลก..."}
             value={keyword}
             onChange={(e) => {
               setKeyword(e.target.value);
@@ -127,23 +143,32 @@ function Home() {
                       }}
                     />
                     <div className="card-body d-flex flex-column">
-                      <h5
+                        <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+                          <h2
                         className="card-title fw-bold mb-1 text-truncate"
                         title={post.title}
                       >
                         {post.title}
-                      </h5>
+                          </h2>
+                          <span className={`badge ${post.post_type === "discussion" ? "text-bg-info" : "text-bg-primary"}`}>
+                            {post.post_type === "discussion" ? "รีวิว / พูดคุย" : "แลกเปลี่ยน"}
+                          </span>
+                        </div>
                       <p className="card-text text-muted small mb-2">
-                        หมวดหมู่: {post.category?.name || "ทั่วไป"} <br />
-                        สภาพ: {post.condition_percent}%
+                        หมวดหมู่: {post.category?.name || "ทั่วไป"}
                       </p>
-                      {post.looking_for && (
+                      {post.post_type === "exchange" && <p className="card-text text-muted small mb-2">สภาพ: {post.condition_percent}%</p>}
+                      {post.post_type === "discussion" && post.gadget_name && <p className="card-text text-muted small mb-2">อุปกรณ์: {post.gadget_name}</p>}
+                      {post.post_type === "exchange" && post.looking_for && (
                         <div className="mb-3">
                           <span className="badge bg-info text-dark text-wrap text-start">
                             สนใจแลก: {post.looking_for}
                           </span>
                         </div>
                       )}
+                      <div className="small text-secondary mb-3">
+                        โดย {post.user?.name || "ผู้ใช้"} · {post.likes_count || 0} ถูกใจ · {post.comments_count || 0} ความคิดเห็น
+                      </div>
                       <Link
                         to={`/posts/${post.id}`}
                         className="btn btn-primary mt-auto"

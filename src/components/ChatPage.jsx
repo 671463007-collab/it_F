@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 
@@ -11,156 +11,115 @@ export default function ChatPage() {
     const [errorMessage, setErrorMessage] = useState('');
     const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
 
-    // 1. ดึงรายชื่อบทสนทนาทั้งหมดเมื่อเปิดหน้าแชท
-    useEffect(() => {
-        let isCurrent = true;
-        const openRequestedConversation = async () => {
-            await fetchConversations();
-            const requestedUserId = Number(searchParams.get('user_id'));
-            if (!requestedUserId || requestedUserId === Number(currentUser?.id)) return;
-
-            try {
-                const response = await api.get(`/users/${requestedUserId}`);
-                if (isCurrent) await selectConversation(response.data);
-            } catch (error) {
-                if (isCurrent) setErrorMessage(error.response?.data?.message || 'เปิดบทสนทนาไม่สำเร็จ');
-            }
-        };
-        openRequestedConversation();
-        return () => { isCurrent = false; };
-    }, [searchParams]);
-
     const fetchConversations = async () => {
         try {
             const response = await api.get('/conversations');
-            setConversations(response.data);
+            setConversations(response.data || []);
         } catch (error) {
-            console.error('เกิดข้อผิดพลาดในการโหลดรายชื่อแชท:', error);
+            setErrorMessage(error.response?.data?.message || 'โหลดกล่องข้อความไม่สำเร็จ');
         }
     };
 
-    // 2. เมื่อคลิกเลือกคนคุย จะโหลดประวัติแชทของคนนั้น
     const selectConversation = async (user) => {
         if (!user || Number(user.id) === Number(currentUser?.id)) return;
         setActiveChatUser(user);
         setErrorMessage('');
         try {
             const response = await api.get('/messages', { params: { user_id: user.id } });
-            setMessages(response.data);
+            setMessages(response.data || []);
             setConversations((current) => current.map((conversation) => (
-                conversation.user.id === user.id ? { ...conversation, unread_count: 0 } : conversation
+                Number(conversation.user.id) === Number(user.id)
+                    ? { ...conversation, unread_count: 0 }
+                    : conversation
             )));
         } catch (error) {
-            console.error('เกิดข้อผิดพลาดในการโหลดข้อความ:', error);
             setErrorMessage(error.response?.data?.message || 'โหลดข้อความไม่สำเร็จ');
         }
     };
 
-    // 3. ฟังก์ชันกดส่งข้อความใหม่
-    const sendMessage = async (e) => {
-        e.preventDefault();
-        if (!newMessage.trim() || !activeChatUser || Number(activeChatUser.id) === Number(currentUser?.id)) return;
+    useEffect(() => {
+        let active = true;
+        const openRequestedConversation = async () => {
+            await fetchConversations();
+            const userId = Number(searchParams.get('user_id'));
+            if (!userId || userId === Number(currentUser?.id)) return;
+            try {
+                const response = await api.get(`/users/${userId}`);
+                if (active) await selectConversation(response.data);
+            } catch (error) {
+                if (active) setErrorMessage(error.response?.data?.message || 'เปิดบทสนทนาไม่สำเร็จ');
+            }
+        };
+        openRequestedConversation();
+        return () => { active = false; };
+    }, [searchParams]);
 
+    const sendMessage = async (event) => {
+        event.preventDefault();
+        if (!newMessage.trim() || !activeChatUser || Number(activeChatUser.id) === Number(currentUser?.id)) return;
+        const payload = {
+            receiver_id: activeChatUser.id,
+            message: newMessage.trim(),
+        };
+        const postId = searchParams.get('exchange_post_id');
+        if (postId) payload.exchange_post_id = Number(postId);
         try {
             setErrorMessage('');
-            const payload = {
-                receiver_id: activeChatUser.id,
-                message: newMessage.trim(),
-            };
-            const exchangePostId = searchParams.get('exchange_post_id');
-            if (exchangePostId) payload.exchange_post_id = Number(exchangePostId);
-            const response = await api.post('/messages', {
-                ...payload,
-            });
-
-            setMessages((currentMessages) => [...currentMessages, response.data.data]);
+            const response = await api.post('/messages', payload);
+            setMessages((current) => [...current, response.data.data]);
             setNewMessage('');
-            fetchConversations(); // อัปเดตข้อความล่าสุดที่ฝั่งซ้าย
+            await fetchConversations();
         } catch (error) {
-            console.error('เกิดข้อผิดพลาดในการส่งข้อความ:', error);
             setErrorMessage(error.response?.data?.message || 'ส่งข้อความไม่สำเร็จ');
         }
     };
 
     return (
-        <div className="flex h-screen bg-gray-100">
-            {/* คอลัมน์ซ้าย: รายชื่อบทสนทนา */}
-            <div className="w-1/3 bg-white border-r border-gray-200 overflow-y-auto">
-                <div className="p-4 border-b font-bold text-lg text-gray-800">แชทของฉัน</div>
-                {conversations.length === 0 ? (
-                    <div className="p-4 text-gray-400 text-center">ยังไม่มีประวัติการสนทนา</div>
-                ) : (
-                    conversations.map(conv => (
-                        <div 
-                            key={conv.user.id}
-                            onClick={() => selectConversation(conv.user)}
-                            className={`flex items-center p-4 cursor-pointer hover:bg-gray-50 border-b ${activeChatUser?.id === conv.user.id ? 'bg-blue-50' : ''}`}
-                        >
-                            <img 
-                                src={conv.user.avatar_url || 'https://via.placeholder.com/150'}
-                                alt="avatar" 
-                                className="w-12 h-12 rounded-full object-cover mr-3 border" 
-                            />
-                            <div className="overflow-hidden">
-                                <h4 className="font-semibold text-gray-800">{conv.user.name}</h4>
-                                <p className="text-sm text-gray-500 truncate">{conv.last_message}</p>
-                                {conv.unread_count > 0 && <span className="badge bg-danger">{conv.unread_count} ยังไม่อ่าน</span>}
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
+        <main className="container-fluid py-3">
+            <h1 className="h3 fw-bold mb-3">ข้อความ</h1>
+            {errorMessage && <div className="alert alert-danger" role="alert">{errorMessage}</div>}
+            <div className="row g-0 border rounded overflow-hidden bg-white" style={{ height: 'min(75vh, 760px)' }}>
+                <aside className="col-12 col-md-4 col-lg-3 border-end d-flex flex-column" aria-label="กล่องข้อความ">
+                    <h2 className="h6 p-3 mb-0 border-bottom">บทสนทนา</h2>
+                    <div className="list-group list-group-flush overflow-auto">
+                        {conversations.length === 0 ? <p className="text-secondary text-center p-3 mb-0">ยังไม่มีบทสนทนา</p> : conversations.map((conversation) => (
+                            <button key={conversation.user.id} type="button" className={`list-group-item list-group-item-action d-flex align-items-center gap-2 ${Number(activeChatUser?.id) === Number(conversation.user.id) ? 'active' : ''}`} onClick={() => selectConversation(conversation.user)}>
+                                <img src={conversation.user.avatar_url || 'https://via.placeholder.com/40'} alt="" className="rounded-circle flex-shrink-0" width="40" height="40" />
+                                <span className="text-truncate flex-grow-1 text-start">
+                                    <span className="d-block fw-semibold">{conversation.user.name}</span>
+                                    <span className="small text-truncate d-block">{conversation.last_message}</span>
+                                </span>
+                                {conversation.unread_count > 0 && <span className="badge text-bg-danger">{conversation.unread_count}</span>}
+                            </button>
+                        ))}
+                    </div>
+                </aside>
 
-            {/* คอลัมน์ขวา: ห้องแชทพูดคุย */}
-            <div className="flex-1 flex flex-col">
-                {activeChatUser ? (
-                    <>
-                        {/* Header ด้านบนของแชท */}
-                        <div className="p-4 bg-white border-b flex items-center shadow-sm">
-                            <img 
-                                src={activeChatUser.avatar_url || 'https://via.placeholder.com/150'}
-                                alt="avatar" 
-                                className="w-10 h-10 rounded-full object-cover mr-3 border" 
-                            />
-                            <h3 className="font-semibold text-gray-800">{activeChatUser.name}</h3>
-                        </div>
-
-                        {/* กล่องข้อความแชท */}
-                        <div className="flex-1 p-4 overflow-y-auto space-y-3">
-                            {errorMessage && <div className="alert alert-danger">{errorMessage}</div>}
-                            {messages.map((msg, index) => {
-                                // เช็คว่าเป็นข้อความที่เราส่งเองหรือคนอื่นส่งมา
-                                const isMyMessage = msg.sender_id !== activeChatUser.id;
-                                return (
-                                    <div key={msg.id || index} className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-xs md:max-w-md p-3 rounded-lg shadow-sm ${isMyMessage ? 'bg-blue-600 text-white' : 'bg-white text-gray-800 border'}`}>
-                                            {msg.message}
-                                        </div>
-                                    </div>
-                                );
+                <section className="col-12 col-md-8 col-lg-9 d-flex flex-column" aria-label="ข้อความสนทนา">
+                    {activeChatUser ? <>
+                        <header className="d-flex align-items-center gap-2 p-3 border-bottom">
+                            <img src={activeChatUser.avatar_url || 'https://via.placeholder.com/40'} alt="" className="rounded-circle" width="40" height="40" />
+                            <h2 className="h6 mb-0">{activeChatUser.name}</h2>
+                        </header>
+                        <div className="flex-grow-1 overflow-auto p-3 d-flex flex-column gap-2">
+                            {messages.map((message) => {
+                                const isMine = Number(message.sender_id) === Number(currentUser?.id);
+                                return <div key={message.id} className={`d-flex ${isMine ? 'justify-content-end' : 'justify-content-start'}`}>
+                                    <article className={`rounded px-3 py-2 ${isMine ? 'bg-primary text-white' : 'bg-light border'}`} style={{ maxWidth: 'min(80%, 560px)' }}>
+                                        <p className="mb-1" style={{ whiteSpace: 'pre-wrap' }}>{message.message}</p>
+                                        {message.exchange_post && <div className="small border-top pt-1 mt-1">ประกาศ: {message.exchange_post.title}</div>}
+                                        <time className="small opacity-75">{new Date(message.created_at).toLocaleString('th-TH')}</time>
+                                    </article>
+                                </div>;
                             })}
                         </div>
-
-                        {/* ช่องพิมพ์ข้อความด้านล่าง */}
-                        <form onSubmit={sendMessage} className="p-4 bg-white border-t flex">
-                            <input 
-                                type="text" 
-                                value={newMessage} 
-                                onChange={(e) => setNewMessage(e.target.value)} 
-                                placeholder="พิมพ์ข้อความ..." 
-                                className="flex-1 border rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <button type="submit" className="bg-blue-600 text-white px-6 rounded-r-lg hover:bg-blue-700 transition">
-                                ส่ง
-                            </button>
+                        <form className="d-flex gap-2 p-3 border-top" onSubmit={sendMessage}>
+                            <input className="form-control" value={newMessage} onChange={(event) => setNewMessage(event.target.value)} placeholder="พิมพ์ข้อความ..." maxLength="5000" required />
+                            <button type="submit" className="btn btn-primary" disabled={!newMessage.trim()}>ส่ง</button>
                         </form>
-                    </>
-                ) : (
-                    <div className="flex-1 flex items-center justify-center text-gray-400">
-                        {errorMessage || 'เลือกบทสนทนาทางด้านซ้ายเพื่อเริ่มพูดคุย'}
-                    </div>
-                )}
+                    </> : <div className="flex-grow-1 d-flex align-items-center justify-content-center text-secondary p-3">เลือกบทสนทนาเพื่อดูข้อความ</div>}
+                </section>
             </div>
-        </div>
+        </main>
     );
 }

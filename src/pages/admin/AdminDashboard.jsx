@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 
 export default function AdminDashboard() {
@@ -7,6 +8,8 @@ export default function AdminDashboard() {
         new_users_7_days: 0,
         banned_users: 0,
         total_posts: 0,
+        exchange_posts: 0,
+        discussion_posts: 0,
         open_posts: 0,
         total_comments: 0,
         total_likes: 0,
@@ -34,20 +37,15 @@ export default function AdminDashboard() {
         }
     };
 
-    if (loading) return <div className="text-center py-10 text-gray-500">กำลังโหลดข้อมูลแดชบอร์ด...</div>;
+    if (loading) return <div className="container py-5 text-center text-secondary">กำลังโหลดข้อมูลแดชบอร์ด...</div>;
 
     const metrics = [
         ['ผู้ใช้ทั้งหมด', stats.total_users],
-        ['ผู้ใช้ใหม่ใน 7 วัน', stats.new_users_7_days],
-        ['บัญชีถูกแบน', stats.banned_users],
         ['โพสต์ทั้งหมด', stats.total_posts],
-        ['โพสต์ที่เปิดอยู่', stats.open_posts],
+        ['โพสต์แลกเปลี่ยน', stats.exchange_posts],
+        ['โพสต์รีวิว / พูดคุย', stats.discussion_posts],
         ['คอมเมนต์ทั้งหมด', stats.total_comments],
-        ['ไลค์ทั้งหมด', stats.total_likes],
         ['รีวิวอุปกรณ์ทั้งหมด', stats.total_reviews],
-        ['คะแนนเฉลี่ยโพสต์แลกเปลี่ยน', `${Number(stats.average_post_rating || 0).toFixed(2)} / 5`],
-        ['คะแนนเฉลี่ยรีวิวอุปกรณ์', `${Number(stats.average_rating || 0).toFixed(2)} / 5`],
-        ['รายงานค้างอยู่', stats.pending_reports],
     ];
 
     return (
@@ -59,7 +57,7 @@ export default function AdminDashboard() {
                 <div className="card border-warning border-2 bg-warning-subtle">
                     <div className="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
                         <div><div className="text-uppercase small fw-bold text-warning-emphasis">ต้องดำเนินการ</div><h2 className="h5 mb-0">โพสต์รอตรวจสอบ</h2></div>
-                        <div className="display-5 fw-bold text-warning-emphasis">{stats.pending_posts}</div>
+                        <div className="d-flex align-items-center gap-3"><div className="display-5 fw-bold text-warning-emphasis">{stats.pending_posts}</div><Link className="btn btn-warning" to="/admin/posts?status=pending">ตรวจสอบโพสต์</Link></div>
                     </div>
                 </div>
             </section>
@@ -75,22 +73,6 @@ export default function AdminDashboard() {
                 ))}
             </section>
 
-            <section className="card border-0 shadow-sm">
-                <div className="card-body">
-                    <h2 className="h5 mb-3">โพสต์แยกตามหมวดหมู่</h2>
-                    <div className="table-responsive">
-                        <table className="table table-sm align-middle mb-0">
-                            <thead><tr><th>หมวดหมู่</th><th className="text-end">จำนวนโพสต์</th></tr></thead>
-                            <tbody>
-                                {(stats.posts_by_category || []).map((item) => (
-                                    <tr key={item.category_id}><td>{item.category?.name || 'ไม่ระบุหมวดหมู่'}</td><td className="text-end">{item.total}</td></tr>
-                                ))}
-                                {(!stats.posts_by_category || stats.posts_by_category.length === 0) && <tr><td colSpan="2" className="text-center text-secondary">ยังไม่มีข้อมูล</td></tr>}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
         </main>
     );
 }

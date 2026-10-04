@@ -81,9 +81,12 @@ export default function UserProfilePage() {
                     <article className="card h-100 border-0 shadow-sm">
                         {post.images?.[0]?.image_url && <img src={post.images[0].image_url} alt={post.title} className="card-img-top" style={{ height: '200px', objectFit: 'cover' }} />}
                         <div className="card-body">
-                            <div className="small text-secondary mb-1">{post.category?.name || 'ไม่ระบุหมวดหมู่'} · สภาพ {post.condition_percent}%</div>
+                            <span className={`badge mb-2 ${(post.post_type || 'exchange') === 'discussion' ? 'text-bg-info' : 'text-bg-primary'}`}>{(post.post_type || 'exchange') === 'discussion' ? 'รีวิว / พูดคุย' : 'แลกเปลี่ยน'}</span>
+                            <div className="small text-secondary mb-1">{post.category?.name || 'ไม่ระบุหมวดหมู่'}{(post.post_type || 'exchange') === 'exchange' ? ` · สภาพ ${post.condition_percent}%` : ''}</div>
                             <h3 className="h5 fw-bold">{post.title}</h3>
                             <p className="text-secondary">{post.description}</p>
+                            {(post.post_type || 'exchange') === 'discussion' && post.gadget_name && <p className="small text-secondary">อุปกรณ์: {post.gadget_name}</p>}
+                            {(post.post_type || 'exchange') === 'exchange' && post.looking_for && <p className="small">ต้องการแลกกับ: {post.looking_for}</p>}
                             {post.looking_for && <p className="small">ต้องการแลกกับ: {post.looking_for}</p>}
                             <Link to={`/posts/${post.id}`} className="btn btn-outline-primary btn-sm">ดูรายละเอียด</Link>
                         </div>
