@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axios';
 
 export default function CreateExchangePost() {
     const navigate = useNavigate();
@@ -21,7 +21,7 @@ export default function CreateExchangePost() {
 
     // โหลดหมวดหมู่สินค้าทั้งหมดเมื่อเปิดหน้าเว็บ
     useEffect(() => {
-        axios.get('http://127.0.0.1:8000/api/categories')
+        api.get('/categories')
             .then(res => setCategories(res.data))
             .catch(err => console.error('ไม่สามารถโหลดหมวดหมู่ได้:', err));
     }, []);
@@ -55,13 +55,7 @@ export default function CreateExchangePost() {
         }
 
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.post('http://127.0.0.1:8000/api/exchange-posts', data, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
+            const response = await api.post('/exchange-posts', data);
 
             alert(response.data.message);
             navigate('/'); // พา กลับไปหน้าแรกหรือหน้าจัดการโพสต์

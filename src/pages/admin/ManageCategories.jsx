@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../api/axios';
 
 export default function ManageCategories() {
     const [categories, setCategories] = useState([]);
@@ -14,10 +14,7 @@ export default function ManageCategories() {
 
     const fetchCategories = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://127.0.0.1:8000/api/admin/categories', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await api.get('/admin/categories');
             setCategories(response.data);
         } catch (error) {
             console.error('ไม่สามารถโหลดข้อมูลหมวดหมู่ได้:', error);
@@ -30,24 +27,18 @@ export default function ManageCategories() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrorMessage('');
-        const token = localStorage.getItem('token');
-
         try {
             if (editingCategory) {
                 // อัปเดตหมวดหมู่เดิม
-                await axios.put(`http://127.0.0.1:8000/api/admin/categories/${editingCategory.id}`, {
+                await api.put(`/admin/categories/${editingCategory.id}`, {
                     name: name,
                     is_active: editingCategory.is_active
-                }, {
-                    headers: { Authorization: `Bearer ${token}` }
                 });
                 alert('แก้ไขหมวดหมู่เรียบร้อยแล้ว');
             } else {
                 // สร้างหมวดหมู่ใหม่
-                await axios.post('http://127.0.0.1:8000/api/admin/categories', {
+                await api.post('/admin/categories', {
                     name: name
-                }, {
-                    headers: { Authorization: `Bearer ${token}` }
                 });
                 alert('เพิ่มหมวดหมู่สำเร็จ');
             }
@@ -79,17 +70,16 @@ export default function ManageCategories() {
 
     // สลับสถานะ Active / Inactive ของหมวดหมู่
     const handleToggleActive = async (category) => {
-        const token = localStorage.getItem('token');
+        setErrorMessage('');
         try {
-            await axios.put(`http://127.0.0.1:8000/api/admin/categories/${category.id}`, {
+            await api.put(`/admin/categories/${category.id}`, {
                 name: category.name,
-                is_active: category.is_active ? 0 : 1
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
+                is_active: !category.is_active
             });
             fetchCategories();
         } catch (error) {
             console.error('ไม่สามารถเปลี่ยนสถานะได้:', error);
+            setErrorMessage(error.response?.data?.message || 'ไม่สามารถเปลี่ยนสถานะหมวดหมู่ได้');
         }
     };
 
@@ -97,11 +87,8 @@ export default function ManageCategories() {
     const handleDelete = async (id) => {
         if (!window.confirm('คุณแน่ใจหรือไม่ว่าต้องการลบหมวดหมู่นี้?')) return;
 
-        const token = localStorage.getItem('token');
         try {
-            await axios.delete(`http://127.0.0.1:8000/api/admin/categories/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await api.delete(`/admin/categories/${id}`);
             setCategories(categories.filter(cat => cat.id !== id));
             alert('ลบหมวดหมู่เรียบร้อยแล้ว');
         } catch (error) {

@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../api/axios';
 
 export default function ManageUsers() {
     const [users, setUsers] = useState([]);
+    const [keyword, setKeyword] = useState('');
+    const [status, setStatus] = useState('');
+    const [page, setPage] = useState(1);
+    const [lastPage, setLastPage] = useState(1);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchUsers();
-    }, []);
+    }, [keyword, status, page]);
 
     const fetchUsers = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://127.0.0.1:8000/api/admin/users', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await api.get('/admin/users', { params: { keyword, status, page } });
             // รองรับทั้งแบบ pagination (response.data.data) และแบบ array ตรงๆ
             setUsers(response.data.data || response.data);
+            setLastPage(response.data.last_page || 1);
         } catch (error) {
             console.error('ไม่สามารถโหลดข้อมูลผู้ใช้ได้:', error);
         } finally {
@@ -26,19 +28,16 @@ export default function ManageUsers() {
 
     // ฟังก์ชันสลับสถานะบัญชี (แบน / ปลดแบน)
     const handleToggleStatus = async (userId) => {
-        const token = localStorage.getItem('token');
         try {
-            const response = await axios.patch(`http://127.0.0.1:8000/api/admin/users/${userId}/toggle-status`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await api.patch(`/admin/users/${userId}/toggle-status`);
             
             // อัปเดตสเตตหน้าจอทันทีหลังจาก API ตอบกลับ
             const updatedUser = response.data.user;
-            setUsers(users.map(user => user.id === userId ? { ...user, status: updatedUser.status } : user));
+            setUsers((current) => current.map(user => user.id === userId ? { ...user, status: updatedUser.status } : user));
             alert('เปลี่ยนสถานะผู้ใช้งานเรียบร้อยแล้ว');
         } catch (error) {
             console.error('เกิดข้อผิดพลาดในการเปลี่ยนสถานะ:', error);
-            alert('ไม่สามารถเปลี่ยนสถานะผู้ใช้งานได้');
+            alert(error.response?.data?.message || 'ไม่สามารถเปลี่ยนสถานะผู้ใช้งานได้');
         }
     };
 
@@ -48,6 +47,11 @@ export default function ManageUsers() {
         <div className="max-w-5xl mx-auto p-6 bg-white shadow rounded-lg mt-8 mb-12">
             <h1 className="text-2xl font-bold text-gray-800 mb-2">👥 จัดการผู้ใช้งานในระบบ</h1>
             <p className="text-sm text-gray-500 mb-6">ตรวจสอบรายชื่อสมาชิก ควบคุมสถานะบัญชี และจัดการสิทธิ์ผู้ใช้งาน</p>
+
+            <div className="row g-2 mb-4">
+                <div className="col-md-8"><input className="form-control" value={keyword} placeholder="ค้นหาชื่อหรืออีเมล" onChange={(event) => { setKeyword(event.target.value); setPage(1); }} /></div>
+                <div className="col-md-4"><select className="form-select" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="">ทุกสถานะ</option><option value="active">ใช้งานปกติ</option><option value="banned">ถูกแบน</option></select></div>
+            </div>
 
             <div className="overflow-x-auto border rounded-lg">
                 <table className="w-full text-left border-collapse">
@@ -92,6 +96,9 @@ export default function ManageUsers() {
                     </tbody>
                 </table>
             </div>
+            {lastPage > 1 && <nav className="mt-4" aria-label="หน้าผู้ใช้"><ul className="pagination justify-content-center">
+                {Array.from({ length: lastPage }, (_, index) => index + 1).map((pageNumber) => <li key={pageNumber} className={`page-item ${pageNumber === page ? 'active' : ''}`}><button className="page-link" onClick={() => setPage(pageNumber)}>{pageNumber}</button></li>)}
+            </ul></nav>}
         </div>
     );
 }

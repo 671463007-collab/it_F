@@ -1,15 +1,25 @@
-import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../api/axios';
 
 export default function ReviewPage() {
-    const { userId } = useParams(); // รับ ID ของผู้ใช้ที่ต้องการรีวิวจาก URL Params
     const navigate = useNavigate();
-
+    const [categories, setCategories] = useState([]);
+    const [categoryId, setCategoryId] = useState('');
+    const [gadgetName, setGadgetName] = useState('');
     const [rating, setRating] = useState(5);
-    const [comment, setComment] = useState('');
+    const [content, setContent] = useState('');
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
+
+    useEffect(() => {
+        api.get('/categories')
+            .then((response) => setCategories(response.data))
+            .catch((error) => {
+                console.error('ไม่สามารถโหลดหมวดหมู่ได้:', error);
+                setErrorMessage('ไม่สามารถโหลดหมวดหมู่ได้');
+            });
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -17,24 +27,19 @@ export default function ReviewPage() {
         setErrorMessage('');
 
         try {
-            const token = localStorage.getItem('token');
-            // สมมติ Endpoints สำหรับบันทึกรีวิวผู้ใช้
-            await axios.post(`http://127.0.0.1:8000/api/users/${userId}/reviews`, {
-                rating: rating,
-                comment: comment
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
+            const response = await api.post('/reviews', {
+                category_id: Number(categoryId),
+                gadget_name: gadgetName,
+                rating: Number(rating),
+                content,
             });
 
-            alert('ส่งรีวิวสำเร็จ ขอบคุณสำหรับการแบ่งปันความคิดเห็น!');
-            navigate(-1); // ย้อนกลับไปหน้าก่อนหน้า
+            alert(response.data.message || 'เพิ่มรีวิวสำเร็จ');
+            navigate('/');
         } catch (error) {
             console.error('เกิดข้อผิดพลาดในการส่งรีวิว:', error);
-            if (error.response && error.response.data.message) {
-                setErrorMessage(error.response.data.message);
-            } else {
-                setErrorMessage('ไม่สามารถส่งรีวิวได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง');
-            }
+            const validationMessage = Object.values(error.response?.data?.errors || {}).flat()[0];
+            setErrorMessage(validationMessage || error.response?.data?.message || 'ไม่สามารถส่งรีวิวได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง');
         } finally {
             setLoading(false);
         }
@@ -42,8 +47,8 @@ export default function ReviewPage() {
 
     return (
         <div className="max-w-xl mx-auto p-6 bg-white shadow rounded-lg mt-8 mb-12">
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">⭐ เขียนรีวิวผู้ใช้งาน</h1>
-            <p className="text-sm text-gray-500 mb-6">แบ่งปันประสบการณ์การแลกเปลี่ยนอุปกรณ์ไอทีกับสมาชิกท่านนี้</p>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">เขียนรีวิวอุปกรณ์</h1>
+            <p className="text-sm text-gray-500 mb-6">รีวิวอุปกรณ์ไอทีตามหมวดหมู่และรุ่นสินค้า</p>
 
             {errorMessage && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm">
@@ -52,6 +57,19 @@ export default function ReviewPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-gray-700 font-medium mb-1" htmlFor="review-category">หมวดหมู่</label>
+                    <select id="review-category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)} required className="w-full border rounded-lg px-3 py-2">
+                        <option value="">-- เลือกหมวดหมู่ --</option>
+                        {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                    </select>
+                </div>
+
+                <div>
+                    <label className="block text-gray-700 font-medium mb-1" htmlFor="gadget-name">ชื่ออุปกรณ์</label>
+                    <input id="gadget-name" value={gadgetName} onChange={(event) => setGadgetName(event.target.value)} required maxLength="255" className="w-full border rounded-lg px-3 py-2" placeholder="เช่น Mechanical Keyboard รุ่น..." />
+                </div>
+
                 {/* เลือกระดับคะแนนดาว */}
                 <div>
                     <label className="block text-gray-700 font-medium mb-2">คะแนนความพึงพอใจ ({rating} / 5 ดาว)</label>
@@ -73,10 +91,11 @@ export default function ReviewPage() {
 
                 {/* กล่องข้อความรีวิว */}
                 <div>
-                    <label className="block text-gray-700 font-medium mb-1">ความคิดเห็นเพิ่มเติม</label>
+                    <label className="block text-gray-700 font-medium mb-1" htmlFor="review-content">เนื้อหารีวิว</label>
                     <textarea 
-                        value={comment} 
-                        onChange={(e) => setComment(e.target.value)} 
+                        id="review-content"
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
                         rows="4" 
                         placeholder="เช่น จัดส่งไว สินค้าตรงปกตามที่คุยกัน นิสัยเป็นกันเอง แนะนำเลยครับ!" 
                         required

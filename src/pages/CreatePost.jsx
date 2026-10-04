@@ -12,8 +12,8 @@ function CreatePost() {
   const [lookingFor, setLookingFor] = useState("");
   const [description, setDescription] = useState("");
 
-  const [imageFile, setImageFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
+  const [imageFiles, setImageFiles] = useState([]);
+  const [previewUrls, setPreviewUrls] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -29,16 +29,12 @@ function CreatePost() {
       .catch((err) => console.error("Error categories:", err));
   }, []);
 
-  // เมื่อเลือกรูปภาพ
+  useEffect(() => () => previewUrls.forEach((url) => URL.revokeObjectURL(url)), [previewUrls]);
+
   const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-    } else {
-      setImageFile(null);
-      setPreviewUrl(null);
-    }
+    const files = Array.from(e.target.files || []);
+    setImageFiles(files);
+    setPreviewUrls(files.map((file) => URL.createObjectURL(file)));
   };
 
   // ส่งฟอร์ม
@@ -60,21 +56,23 @@ function CreatePost() {
     formData.append("looking_for", lookingFor);
     formData.append("description", description);
 
-    // ส่งชื่อฟิลด์เป็น "images[]" เพื่อให้ตรงกับ $request->hasFile('images') ใน Laravel Controller
-    if (imageFile) {
-      formData.append("images[]", imageFile);
-    }
+    imageFiles.forEach((file) => formData.append("images[]", file));
 
     api
-      .post("/exchange-posts", formData, )
+      .post("/exchange-posts", formData)
       .then((res) => {
         alert(res.data.message || "สร้างประกาศเรียบร้อยแล้ว");
-        navigate("/");
+        navigate("/my-posts");
       })
       .catch((err) => {
         console.error("Create post error:", err);
+        const validationMessage = Object.values(
+          err.response?.data?.errors || {}
+        ).flat()[0];
         const msg =
-          err.response?.data?.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล";
+          validationMessage ||
+          err.response?.data?.message ||
+          "เกิดข้อผิดพลาดในการบันทึกข้อมูล";
         setErrorMsg(msg);
       })
       .finally(() => setLoading(false));
@@ -176,23 +174,23 @@ function CreatePost() {
               <input
                 type="file"
                 className="form-control"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
                 onChange={handleImageChange}
               />
               <div className="form-text">
-                รองรับไฟล์ JPG, PNG, WEBP ขนาดไม่เกิน 2MB
+                เลือกได้หลายรูป รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 2MB ต่อรูป
               </div>
             </div>
 
-            {previewUrl && (
-              <div className="mb-3 text-center">
+            {previewUrls.length > 0 && (
+              <div className="mb-3">
                 <p className="small text-muted mb-1">ตัวอย่างรูปภาพ:</p>
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="img-thumbnail"
-                  style={{ maxHeight: "200px", objectFit: "contain" }}
-                />
+                <div className="d-flex flex-wrap gap-2">
+                  {previewUrls.map((url, index) => (
+                    <img key={url} src={url} alt={`Preview ${index + 1}`} className="img-thumbnail" style={{ width: "120px", height: "100px", objectFit: "contain" }} />
+                  ))}
+                </div>
               </div>
             )}
 

@@ -17,9 +17,10 @@ function Login() {
     api
       .post("/login", { email, password })
       .then((response) => {
+        sessionStorage.removeItem("banned-session-notified");
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
-        navigate("/");
+        navigate(response.data.user.role === "admin" ? "/admin/dashboard" : "/");
       })
       .catch((error) => {
         if (error.response && error.response.data.message) {
@@ -85,7 +86,7 @@ function Login() {
       </form>
 
       <p className="text-center mt-3">
-        ยังไม่มีบัญชี? <Link to="/register">สมัครสมาชิก</Link>
+        <>ยังไม่มีบัญชี? <Link to="/register">สมัครสมาชิก</Link><br /><Link to="/admin/login">เข้าสู่ระบบผู้ดูแล</Link></>
       </p>
     </div>
   );

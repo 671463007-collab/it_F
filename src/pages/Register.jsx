@@ -27,6 +27,7 @@ function Register() {
         password_confirmation: passwordConfirmation, // ตรงกับกฎ confirmed ของ Laravel
       })
       .then((response) => {
+        sessionStorage.removeItem("banned-session-notified");
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         navigate("/");

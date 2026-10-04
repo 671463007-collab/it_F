@@ -1,13 +1,26 @@
 import React from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import api from '../../api/axios';
 
 export default function AdminLayout() {
     const navigate = useNavigate();
     const location = useLocation();
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
 
-    const handleLogout = () => {
+    useEffect(() => {
+        if (!localStorage.getItem('token') || user?.role !== 'admin') navigate('/admin/login', { replace: true });
+    }, [navigate, user?.role]);
+
+    const handleLogout = async () => {
+        try {
+            await api.post('/logout');
+        } catch (error) {
+            console.error('Admin logout failed:', error);
+        }
         localStorage.removeItem('token');
-        navigate('/login');
+        localStorage.removeItem('user');
+        navigate('/admin/login');
     };
 
     // เช็คว่าลิงก์ไหนกำลัง active อยู่
@@ -17,9 +30,12 @@ export default function AdminLayout() {
         { path: '/admin/dashboard', label: '📊 แดชบอร์ด', icon: '' },
         { path: '/admin/posts', label: '📦 จัดการโพสต์', icon: '' },
         { path: '/admin/users', label: '👥 จัดการผู้ใช้', icon: '' },
+        { path: '/admin/comments', label: '💬 จัดการความคิดเห็น', icon: '' },
         { path: '/admin/categories', label: '🏷️ จัดการหมวดหมู่', icon: '' },
         { path: '/admin/reports', label: '🚨 รายงานปัญหา', icon: '' },
     ];
+
+    if (!localStorage.getItem('token') || user?.role !== 'admin') return null;
 
     return (
         <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">

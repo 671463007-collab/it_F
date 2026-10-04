@@ -1,14 +1,21 @@
 import { Link, useNavigate } from "react-router-dom";
+import api from "../api/axios";
 
 function Navbar() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user"));
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      await api.post("/logout");
+    } catch (error) {
+      console.error("Logout API error:", error);
+    } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      navigate("/login");
+    }
   };
 
   return (
@@ -45,6 +52,11 @@ function Navbar() {
                     + ลงประกาศ
                   </Link>
                 </li>
+                <li className="nav-item me-3"><Link className="nav-link" to="/my-posts">ประกาศของฉัน</Link></li>
+                <li className="nav-item me-3"><Link className="nav-link" to="/messages">ข้อความ</Link></li>
+                <li className="nav-item me-3"><Link className="nav-link" to="/reviews">รีวิวอุปกรณ์</Link></li>
+                <li className="nav-item me-3"><Link className="nav-link" to="/my-reviews">รีวิวของฉัน</Link></li>
+                <li className="nav-item me-3"><Link className="nav-link" to="/profile">โปรไฟล์</Link></li>
                 <li className="nav-item">
                   <span className="nav-link text-white me-2">
                     สวัสดี, {user?.name}
