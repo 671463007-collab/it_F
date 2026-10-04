@@ -31,15 +31,13 @@ export default function ManageCategories() {
             if (editingCategory) {
                 // อัปเดตหมวดหมู่เดิม
                 await api.put(`/admin/categories/${editingCategory.id}`, {
-                    name: name,
-                    is_active: editingCategory.is_active
+                    name,
+                    is_active: editingCategory.is_active,
                 });
                 alert('แก้ไขหมวดหมู่เรียบร้อยแล้ว');
             } else {
                 // สร้างหมวดหมู่ใหม่
-                await api.post('/admin/categories', {
-                    name: name
-                });
+                await api.post('/admin/categories', { name });
                 alert('เพิ่มหมวดหมู่สำเร็จ');
             }
 

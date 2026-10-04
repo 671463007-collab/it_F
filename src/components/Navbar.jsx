@@ -8,9 +8,9 @@ function Navbar() {
 
   const handleLogout = async () => {
     try {
-      await api.post("/logout");
+      if (token) await api.post("/logout");
     } catch (error) {
-      console.error("Logout API error:", error);
+      console.error("Logout error:", error);
     } finally {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
